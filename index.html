@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Golden Sands Ledger</title>
+  <link rel="stylesheet" href="./src/styles.css" />
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="sigil">☾</div>
+      <div>
+        <h1>Golden Sands</h1>
+        <small>Trading Ledger</small>
+      </div>
+    </div>
+    <nav>
+      <button class="nav-btn active" data-view="register">Register</button>
+      <button class="nav-btn" data-view="inventory">Inventory</button>
+      <button class="nav-btn" data-view="transactions">Transactions</button>
+      <button class="nav-btn" data-view="coffers">Coffers</button>
+    </nav>
+    <div class="user-card">
+      <strong>Ko'vash</strong>
+      <span>Owner</span>
+    </div>
+  </aside>
+
+  <main>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Dawnstar · Skyrim</p>
+        <h2 id="view-title">Register</h2>
+      </div>
+      <div class="status"><span></span> Ledger Online</div>
+    </header>
+
+    <section id="register" class="view active">
+      <div class="grid register-grid">
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Items</h3>
+            <input id="search" type="search" placeholder="Search wares…" />
+          </div>
+          <div id="item-list" class="item-list"></div>
+        </div>
+        <div class="panel cart-panel">
+          <div class="panel-head"><h3>Current Sale</h3><button id="clear-cart" class="text-btn">Clear</button></div>
+          <div id="cart" class="cart"></div>
+          <div class="sale-summary">
+            <div><span>Subtotal</span><strong id="subtotal">0 septims</strong></div>
+            <div><span>Discount</span><input id="discount" type="number" min="0" max="100" value="0" />%</div>
+            <div class="total"><span>Total</span><strong id="total">0 septims</strong></div>
+            <button id="complete-sale" class="primary-btn">Complete Sale</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="inventory" class="view">
+      <div class="panel">
+        <div class="panel-head"><h3>Current Stock</h3><button id="add-custom" class="secondary-btn">+ Custom Item</button></div>
+        <table>
+          <thead><tr><th>Item</th><th>Category</th><th>Condition</th><th>Qty</th><th>Price</th></tr></thead>
+          <tbody id="inventory-table"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="transactions" class="view">
+      <div class="panel">
+        <div class="panel-head"><h3>Recent Sales</h3></div>
+        <table>
+          <thead><tr><th>Time</th><th>Seller</th><th>Items</th><th>Total</th></tr></thead>
+          <tbody id="transactions-table"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="coffers" class="view">
+      <div class="cards">
+        <article class="metric"><span>Business Coffers</span><strong id="coffer-value">12,450</strong><small>septims</small></article>
+        <article class="metric"><span>Today's Sales</span><strong id="today-sales">0</strong><small>septims</small></article>
+        <article class="metric"><span>Transactions</span><strong id="sale-count">0</strong><small>today</small></article>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="custom-dialog">
+    <form method="dialog" id="custom-form">
+      <h3>Add Custom Item</h3>
+      <label>Name<input name="name" required /></label>
+      <label>Category<select name="category"><option>Apparel</option><option>Food</option><option>Ingredient</option><option>Misc</option></select></label>
+      <label>Condition<input name="condition" placeholder="Standard" /></label>
+      <label>Quantity<input name="qty" type="number" min="1" value="1" required /></label>
+      <label>Price<input name="price" type="number" min="0" value="0" required /></label>
+      <div class="dialog-actions"><button value="cancel">Cancel</button><button class="primary-btn" value="default">Add Item</button></div>
+    </form>
+  </dialog>
+
+  <script type="module" src="./src/app.js"></script>
+</body>
+</html>
