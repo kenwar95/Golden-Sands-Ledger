@@ -8,25 +8,21 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <header class="topbar">
-    <button id="navToggle" class="icon-btn mobile-only">☰</button>
-    <div class="brand"><div class="seal">GS</div><div><h1>Golden Sands Trading Company</h1><p>Merchant Ledger & Caravan Records</p></div></div>
-    <div class="topbar-right"><span class="status"><span class="dot"></span> Ledger Online</span><div class="identity"><strong>Ko'vash</strong><small>Company Owner</small></div></div>
-  </header>
-  <div class="app-shell">
-    <aside id="sidebar" class="sidebar">
-      <div class="company-switcher panel-dark"><label>Active Business</label><select id="businessSelect"></select><small id="businessLocation"></small></div>
-      <nav id="nav"></nav>
-      <div class="sidebar-footer"><div class="mini-seal">GS</div><div><strong>Golden Sands</strong><small>Company Ledger</small></div></div>
-    </aside>
-    <main class="main">
-      <div class="page-heading"><div><span id="eyebrow" class="eyebrow">Company Overview</span><h2 id="pageTitle">Dashboard</h2></div><div id="pageActions" class="page-actions"></div></div>
-      <section id="app"></section>
-    </main>
-    <aside id="notebookPanel" class="notebook-panel"><div class="notebook-title"><span>Caravan Notebook</span><button class="small-link" onclick="go('notebook')">Open Ledger</button></div><div id="notebookPreview"></div></aside>
-  </div>
-  <footer class="footer">Golden Sands Trading Company · Skyrim Roleplay Ledger</footer>
-  <div id="backdrop" class="backdrop"></div><div id="modalRoot"></div>
-  <script src="app.js"></script>
+<header class="topbar">
+  <button id="navToggle" class="icon-btn mobile-only">☰</button>
+  <div class="brand"><div class="seal">GS</div><div><h1>Golden Sands Trading Company</h1><p>Merchant Ledger & Caravan Records</p></div></div>
+  <div class="topbar-right"><span class="status"><span class="dot"></span> Ledger Online</span><div class="identity"><strong>Ko'vash</strong><small>Company Owner</small></div></div>
+</header>
+<div class="app-shell">
+  <aside id="sidebar" class="sidebar">
+    <div class="company-switcher panel-dark"><label>Active Business</label><select id="businessSelect"></select><small id="businessLocation"></small></div>
+    <nav id="nav"></nav>
+    <div class="sidebar-footer"><div class="mini-seal">GS</div><div><strong>Golden Sands</strong><small>Company Ledger</small></div></div>
+  </aside>
+  <main class="main"><div class="page-heading"><div><span id="eyebrow" class="eyebrow">Company Overview</span><h2 id="pageTitle">Dashboard</h2></div><div id="pageActions" class="page-actions"></div></div><section id="app"></section></main>
+  <aside class="notebook-panel"><div class="notebook-title"><span>Caravan Notebook</span><button class="small-link" onclick="go('notebook')">Open Ledger</button></div><div id="notebookPreview"></div></aside>
+</div>
+<footer class="footer">Golden Sands Trading Company · Skyrim Roleplay Ledger</footer>
+<div id="backdrop" class="backdrop"></div><div id="modalRoot"></div><script src="app.js"></script>
 </body>
 </html>
