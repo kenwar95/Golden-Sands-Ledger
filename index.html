@@ -1,104 +1,355 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Golden Sands Ledger</title>
-  <link rel="stylesheet" href="./src/styles.css" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Golden Sands Ledger</title>
+<style>
+:root{
+  --ink:#261d13; --muted:#6e5a42; --gold:#a57424; --gold2:#d2ad62;
+  --paper:#e7d5ad; --paper2:#d4bd8f; --panel:#f2e4c4;
+  --dark:#21180f; --dark2:#362617; --line:#8d7047; --good:#456537; --bad:#7d3329;
+  --shadow:0 12px 30px rgba(32,21,10,.23);
+}
+*{box-sizing:border-box}
+body{
+  margin:0; color:var(--ink); font-family:Georgia,"Times New Roman",serif;
+  background:
+    radial-gradient(circle at 15% 10%,rgba(255,255,255,.24),transparent 25%),
+    radial-gradient(circle at 85% 90%,rgba(87,53,18,.12),transparent 30%),
+    repeating-linear-gradient(0deg,rgba(80,48,18,.025) 0 1px,transparent 1px 4px),
+    #cdb584;
+  min-height:100vh;
+}
+button,input,select{font:inherit}
+button{cursor:pointer}
+.app{display:grid;grid-template-columns:270px 1fr;min-height:100vh}
+.sidebar{
+  background:linear-gradient(180deg,#1f160e,#2c1d11 60%,#1b130d);
+  color:#f3e1b8;border-right:2px solid #8f6a32;position:sticky;top:0;height:100vh;
+  padding:22px 16px;display:flex;flex-direction:column;box-shadow:8px 0 24px rgba(0,0,0,.18);z-index:5
+}
+.brand{padding:6px 12px 22px;border-bottom:1px solid rgba(231,194,123,.35);margin-bottom:18px}
+.brand .crest{font-size:34px;line-height:1;margin-bottom:9px}
+.brand h1{margin:0;font-size:22px;letter-spacing:1.2px;text-transform:uppercase;color:#f0cf86}
+.brand p{margin:4px 0 0;color:#bfa87d;font-size:12px;letter-spacing:2px;text-transform:uppercase}
+.navgroup{font-size:11px;letter-spacing:2px;color:#917d5f;text-transform:uppercase;margin:13px 12px 7px}
+.navbtn{
+  width:100%;border:1px solid transparent;background:transparent;color:#dcc89f;text-align:left;
+  padding:10px 12px;border-radius:4px;margin:2px 0;display:flex;align-items:center;gap:10px
+}
+.navbtn:hover{background:rgba(212,173,98,.08);border-color:rgba(212,173,98,.18)}
+.navbtn.active{background:linear-gradient(90deg,rgba(177,126,43,.28),rgba(177,126,43,.08));border-color:#805f2e;color:#ffd98e}
+.navicon{width:21px;text-align:center}
+.userbox{margin-top:auto;border-top:1px solid rgba(231,194,123,.3);padding:14px 10px 2px}
+.userbox b{display:block;color:#f0cf86}
+.userbox small{color:#a99574}
+.main{min-width:0}
+.topbar{
+  height:72px;background:rgba(239,222,184,.92);border-bottom:1px solid #a98b5f;
+  display:flex;align-items:center;justify-content:space-between;padding:0 28px;position:sticky;top:0;z-index:4;
+  backdrop-filter:blur(6px)
+}
+.topbar h2{font-size:20px;margin:0;letter-spacing:.4px}
+.top-actions{display:flex;gap:9px;align-items:center}
+.badge{padding:6px 9px;border:1px solid #8b7048;background:#ead7aa;border-radius:999px;font-size:12px}
+.content{padding:28px;max-width:1500px;margin:auto}
+.page{display:none}.page.active{display:block}
+.pagehead{display:flex;justify-content:space-between;align-items:end;gap:18px;margin-bottom:20px}
+.pagehead h3{font-size:29px;margin:0 0 4px}.pagehead p{margin:0;color:var(--muted)}
+.btn{
+  border:1px solid #6f5127;background:linear-gradient(#bc8a3f,#8c6127);color:#fff5dd;
+  padding:9px 14px;border-radius:4px;box-shadow:inset 0 1px rgba(255,255,255,.25)
+}
+.btn:hover{filter:brightness(1.05)} .btn.secondary{background:#e2c994;color:#392914;border-color:#9c7c4d}
+.btn.danger{background:linear-gradient(#9f4b3e,#6f2e27)}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:18px}
+.stat{
+  background:linear-gradient(145deg,rgba(248,235,202,.94),rgba(223,199,149,.94));border:1px solid #a9895b;
+  box-shadow:var(--shadow);padding:18px;position:relative;overflow:hidden
+}
+.stat:after{content:"";position:absolute;inset:6px;border:1px solid rgba(126,91,44,.22);pointer-events:none}
+.stat label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:#755e40}
+.stat strong{font-size:28px;display:block;margin-top:6px;color:#503517}
+.stat small{color:#796346}
+.panel{
+  background:rgba(241,226,192,.94);border:1px solid #9b7c51;box-shadow:var(--shadow);margin-bottom:18px;
+}
+.paneltitle{
+  padding:13px 16px;background:linear-gradient(90deg,#3a2918,#5c3d20);color:#f3dba8;border-bottom:1px solid #8b693b;
+  display:flex;justify-content:space-between;align-items:center
+}
+.paneltitle h4{margin:0;font-size:16px;letter-spacing:.5px}
+.panelbody{padding:16px}
+.twocol{display:grid;grid-template-columns:1.25fr .75fr;gap:18px}
+.threecol{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.tablewrap{overflow:auto}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{background:#ddc69a;color:#5d4528;text-transform:uppercase;letter-spacing:.7px;font-size:11px;text-align:left;padding:10px;border-bottom:1px solid #9e7d4f}
+td{padding:11px 10px;border-bottom:1px solid rgba(129,98,59,.25)}
+tr:hover td{background:rgba(255,248,228,.4)}
+.stock-low{color:#8f3f30;font-weight:bold}
+.searchrow{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.input,.select{
+  border:1px solid #9d7d50;background:#f7ebcd;color:#312317;padding:9px 10px;border-radius:3px;outline:none
+}
+.input:focus,.select:focus{box-shadow:0 0 0 2px rgba(166,116,35,.18);border-color:#8b6127}
+.searchrow .input{flex:1;min-width:230px}
+.itemgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.itemcard{
+  background:#ead8b0;border:1px solid #a98a5b;padding:12px;display:flex;justify-content:space-between;gap:10px;align-items:center
+}
+.itemcard:hover{background:#f1e1bf}.itemcard b{display:block}.itemcard small{color:#755f43}
+.cartline{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:9px 0;border-bottom:1px solid rgba(120,89,50,.22)}
+.qtybtn{width:28px;height:28px;border:1px solid #9a794d;background:#e4cd9d}
+.totals{margin-top:14px;border-top:1px solid #98764b;padding-top:12px}
+.totalrow{display:flex;justify-content:space-between;margin:7px 0}.grand{font-size:20px;font-weight:bold}
+.activity{display:flex;gap:12px;padding:11px 0;border-bottom:1px solid rgba(119,88,50,.22)}
+.activity .dot{width:9px;height:9px;border-radius:50%;background:#826020;margin-top:6px;flex:none}
+.progress{height:8px;background:#d1ba8a;border:1px solid #ad8c59;margin-top:6px}.progress span{display:block;height:100%;background:#735526}
+.kicker{font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:#7b6343}
+.callout{padding:14px;border-left:4px solid #9b702d;background:#e9d5a9;margin-bottom:14px}
+.empty{text-align:center;padding:28px;color:#786348}
+.formgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.formgrid label{font-size:12px;color:#6f583a}.formgrid input,.formgrid select{width:100%;margin-top:4px}
+.mobilemenu{display:none}
+.modalback{position:fixed;inset:0;background:rgba(20,13,8,.68);display:none;align-items:center;justify-content:center;z-index:20;padding:20px}
+.modalback.show{display:flex}.modal{max-width:560px;width:100%;background:#efe0bd;border:1px solid #9d7640;box-shadow:0 25px 70px #0008}
+.modal .paneltitle{padding:15px 18px}.modal .panelbody{padding:18px}
+.notice{font-size:12px;padding:7px 10px;border:1px solid #947444;background:#ead5a9;border-radius:3px}
+@media(max-width:1100px){
+  .grid4{grid-template-columns:repeat(2,1fr)}.twocol,.threecol{grid-template-columns:1fr}.itemgrid{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:760px){
+  .app{display:block}.sidebar{position:fixed;left:-280px;width:270px;transition:.2s}.sidebar.open{left:0}
+  .mobilemenu{display:inline-block}.topbar{padding:0 14px}.content{padding:16px}.grid4{grid-template-columns:1fr 1fr}
+  .itemgrid{grid-template-columns:1fr}.pagehead{align-items:flex-start;flex-direction:column}.formgrid{grid-template-columns:1fr}
+}
+</style>
 </head>
 <body>
-  <aside class="sidebar">
+<div class="app">
+  <aside class="sidebar" id="sidebar">
     <div class="brand">
-      <div class="sigil">☾</div>
-      <div>
-        <h1>Golden Sands</h1>
-        <small>Trading Ledger</small>
-      </div>
+      <div class="crest">☾</div>
+      <h1>Golden Sands</h1>
+      <p>Automated Ledger</p>
     </div>
-    <nav>
-      <button class="nav-btn active" data-view="register">Register</button>
-      <button class="nav-btn" data-view="inventory">Inventory</button>
-      <button class="nav-btn" data-view="transactions">Transactions</button>
-      <button class="nav-btn" data-view="coffers">Coffers</button>
-    </nav>
-    <div class="user-card">
-      <strong>Ko'vash</strong>
-      <span>Owner</span>
-    </div>
+    <div class="navgroup">Business</div>
+    <button class="navbtn active" data-page="dashboard"><span class="navicon">⌂</span> Home</button>
+    <button class="navbtn" data-page="register"><span class="navicon">✦</span> Register</button>
+    <button class="navbtn" data-page="inventory"><span class="navicon">▦</span> Inventory</button>
+    <button class="navbtn" data-page="intake"><span class="navicon">↓</span> Stock Intake</button>
+    <button class="navbtn" data-page="transactions"><span class="navicon">≡</span> Sales Log</button>
+    <div class="navgroup">Management</div>
+    <button class="navbtn" data-page="employees"><span class="navicon">♟</span> Employees</button>
+    <button class="navbtn" data-page="coffers"><span class="navicon">◈</span> Coffers</button>
+    <button class="navbtn" data-page="lowstock"><span class="navicon">!</span> Low Stock</button>
+    <button class="navbtn" data-page="settings"><span class="navicon">⚙</span> Ledger Settings</button>
+    <div class="userbox"><b>Ko'vash</b><small>Owner · Golden Sands Caravan</small></div>
   </aside>
 
-  <main>
+  <main class="main">
     <header class="topbar">
-      <div>
-        <p class="eyebrow">Dawnstar · Skyrim</p>
-        <h2 id="view-title">Register</h2>
+      <div style="display:flex;align-items:center;gap:10px">
+        <button class="btn secondary mobilemenu" id="menubtn">☰</button>
+        <h2 id="topTitle">Home</h2>
       </div>
-      <div class="status"><span></span> Ledger Online</div>
+      <div class="top-actions"><span class="badge">Dawnstar · Skyrim</span><span class="notice">Ledger Online</span></div>
     </header>
 
-    <section id="register" class="view active">
-      <div class="grid register-grid">
-        <div class="panel">
-          <div class="panel-head">
-            <h3>Items</h3>
-            <input id="search" type="search" placeholder="Search wares…" />
-          </div>
-          <div id="item-list" class="item-list"></div>
+    <div class="content">
+      <section class="page active" id="dashboard">
+        <div class="pagehead"><div><span class="kicker">Golden Sands Caravan</span><h3>Business Overview</h3><p>A quick reading of today’s trade and stock.</p></div><button class="btn" data-jump="register">Open Register</button></div>
+        <div class="grid4">
+          <div class="stat"><label>Business Coffers</label><strong id="statCoffers">0</strong><small>septims available</small></div>
+          <div class="stat"><label>Today's Sales</label><strong id="statToday">0</strong><small>septims gross</small></div>
+          <div class="stat"><label>Transactions</label><strong id="statTx">0</strong><small>completed sales</small></div>
+          <div class="stat"><label>Low Stock</label><strong id="statLow">0</strong><small>items need attention</small></div>
         </div>
-        <div class="panel cart-panel">
-          <div class="panel-head"><h3>Current Sale</h3><button id="clear-cart" class="text-btn">Clear</button></div>
-          <div id="cart" class="cart"></div>
-          <div class="sale-summary">
-            <div><span>Subtotal</span><strong id="subtotal">0 septims</strong></div>
-            <div><span>Discount</span><input id="discount" type="number" min="0" max="100" value="0" />%</div>
-            <div class="total"><span>Total</span><strong id="total">0 septims</strong></div>
-            <button id="complete-sale" class="primary-btn">Complete Sale</button>
+        <div class="twocol">
+          <div class="panel"><div class="paneltitle"><h4>Recent Trade</h4><span>Last transactions</span></div><div class="panelbody" id="recentActivity"></div></div>
+          <div>
+            <div class="panel"><div class="paneltitle"><h4>Stock Health</h4></div><div class="panelbody" id="stockHealth"></div></div>
+            <div class="panel"><div class="paneltitle"><h4>Caravan Notice</h4></div><div class="panelbody"><div class="callout">Keep all custom and modded wares under their exact in-server names. Different conditions are treated as separate stock.</div><small>Phase 2 prototype · Browser storage enabled</small></div></div>
           </div>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <section id="inventory" class="view">
-      <div class="panel">
-        <div class="panel-head"><h3>Current Stock</h3><button id="add-custom" class="secondary-btn">+ Custom Item</button></div>
-        <table>
-          <thead><tr><th>Item</th><th>Category</th><th>Condition</th><th>Qty</th><th>Price</th></tr></thead>
-          <tbody id="inventory-table"></tbody>
-        </table>
-      </div>
-    </section>
+      <section class="page" id="register">
+        <div class="pagehead"><div><span class="kicker">Point of Sale</span><h3>Register</h3><p>Select wares, apply a discount, and complete a sale.</p></div><span class="notice">Seller: Ko'vash</span></div>
+        <div class="twocol">
+          <div class="panel"><div class="paneltitle"><h4>Available Wares</h4><span id="itemCount"></span></div><div class="panelbody"><div class="searchrow"><input class="input" id="itemSearch" placeholder="Search wares…"><select class="select" id="catFilter"><option>All categories</option></select></div><div class="itemgrid" id="itemGrid"></div></div></div>
+          <div class="panel"><div class="paneltitle"><h4>Current Sale</h4><button class="btn secondary" id="clearCart">Clear</button></div><div class="panelbody"><div id="cart"></div><div class="totals"><div class="totalrow"><span>Subtotal</span><b id="subtotal">0</b></div><div class="totalrow"><span>Discount</span><span><input class="input" id="discount" type="number" min="0" max="100" value="0" style="width:70px"> %</span></div><div class="totalrow grand"><span>Total</span><span id="grandtotal">0</span></div><button class="btn" style="width:100%;margin-top:10px" id="completeSale">Complete Sale</button></div></div></div>
+        </div>
+      </section>
 
-    <section id="transactions" class="view">
-      <div class="panel">
-        <div class="panel-head"><h3>Recent Sales</h3></div>
-        <table>
-          <thead><tr><th>Time</th><th>Seller</th><th>Items</th><th>Total</th></tr></thead>
-          <tbody id="transactions-table"></tbody>
-        </table>
-      </div>
-    </section>
+      <section class="page" id="inventory">
+        <div class="pagehead"><div><span class="kicker">Stockroom</span><h3>Inventory</h3><p>All caravan wares, conditions, quantities, and prices.</p></div><button class="btn" id="openAdd">+ Add Custom Item</button></div>
+        <div class="panel"><div class="panelbody"><div class="searchrow"><input class="input" id="invSearch" placeholder="Search inventory…"><select class="select" id="invCat"><option>All categories</option></select></div><div class="tablewrap"><table><thead><tr><th>Item</th><th>Category</th><th>Condition</th><th>Qty</th><th>Price</th><th>Status</th></tr></thead><tbody id="inventoryRows"></tbody></table></div></div></div>
+      </section>
 
-    <section id="coffers" class="view">
-      <div class="cards">
-        <article class="metric"><span>Business Coffers</span><strong id="coffer-value">12,450</strong><small>septims</small></article>
-        <article class="metric"><span>Today's Sales</span><strong id="today-sales">0</strong><small>septims</small></article>
-        <article class="metric"><span>Transactions</span><strong id="sale-count">0</strong><small>today</small></article>
-      </div>
-    </section>
+      <section class="page" id="intake">
+        <div class="pagehead"><div><span class="kicker">Receiving</span><h3>Stock Intake</h3><p>Add newly acquired goods to existing inventory.</p></div></div>
+        <div class="panel"><div class="paneltitle"><h4>Receive Wares</h4></div><div class="panelbody"><div class="formgrid">
+          <label>Item<select class="select" id="intakeItem"></select></label>
+          <label>Quantity<input class="input" id="intakeQty" type="number" min="1" value="1"></label>
+          <label>Source<input class="input" id="intakeSource" placeholder="Trader, supplier, crafting…"></label>
+          <label>Note<input class="input" id="intakeNote" placeholder="Optional note"></label>
+        </div><button class="btn" id="receiveStock" style="margin-top:14px">Receive Stock</button></div></div>
+      </section>
+
+      <section class="page" id="transactions">
+        <div class="pagehead"><div><span class="kicker">Ledger</span><h3>Sales Log</h3><p>Completed register transactions.</p></div></div>
+        <div class="panel"><div class="panelbody"><div class="tablewrap"><table><thead><tr><th>Date</th><th>Seller</th><th>Items</th><th>Discount</th><th>Total</th></tr></thead><tbody id="salesRows"></tbody></table></div></div></div>
+      </section>
+
+      <section class="page" id="employees">
+        <div class="pagehead"><div><span class="kicker">Staff</span><h3>Employees</h3><p>Manage caravan staff and their roles.</p></div><button class="btn" id="addEmployeeBtn">+ Add Employee</button></div>
+        <div class="threecol" id="employeeCards"></div>
+      </section>
+
+      <section class="page" id="coffers">
+        <div class="pagehead"><div><span class="kicker">Treasury</span><h3>Business Coffers</h3><p>Track the caravan’s available operating funds.</p></div></div>
+        <div class="grid4"><div class="stat"><label>Available</label><strong id="cofferBig">0</strong><small>septims</small></div><div class="stat"><label>Sales Added</label><strong id="salesAdded">0</strong><small>all recorded sales</small></div><div class="stat"><label>Manual Deposits</label><strong id="depositTotal">0</strong><small>recorded deposits</small></div><div class="stat"><label>Withdrawals</label><strong id="withdrawTotal">0</strong><small>recorded withdrawals</small></div></div>
+        <div class="panel"><div class="paneltitle"><h4>Coffer Entry</h4></div><div class="panelbody"><div class="formgrid"><label>Type<select class="select" id="cofferType"><option>Deposit</option><option>Withdrawal</option></select></label><label>Amount<input class="input" id="cofferAmount" type="number" min="1"></label><label style="grid-column:1/-1">Reason<input class="input" id="cofferReason" placeholder="Reason for entry"></label></div><button class="btn" id="recordCoffer" style="margin-top:14px">Record Entry</button></div></div>
+      </section>
+
+      <section class="page" id="lowstock">
+        <div class="pagehead"><div><span class="kicker">Stock Alert</span><h3>Low Stock</h3><p>Items at or below the configured threshold.</p></div></div>
+        <div class="panel"><div class="panelbody"><div class="tablewrap"><table><thead><tr><th>Item</th><th>Condition</th><th>Quantity</th><th>Threshold</th></tr></thead><tbody id="lowRows"></tbody></table></div></div></div>
+      </section>
+
+      <section class="page" id="settings">
+        <div class="pagehead"><div><span class="kicker">Administration</span><h3>Ledger Settings</h3><p>Prototype business preferences saved in this browser.</p></div></div>
+        <div class="panel"><div class="paneltitle"><h4>Business Settings</h4></div><div class="panelbody"><div class="formgrid">
+          <label>Business Name<input class="input" id="setBusiness"></label>
+          <label>Location<input class="input" id="setLocation"></label>
+          <label>Low-stock threshold<input class="input" id="setThreshold" type="number" min="0"></label>
+          <label>Currency<input class="input" id="setCurrency"></label>
+        </div><button class="btn" id="saveSettings" style="margin-top:14px">Save Settings</button><button class="btn danger" id="resetData" style="margin-top:14px;margin-left:8px">Reset Prototype Data</button></div></div>
+      </section>
+    </div>
   </main>
+</div>
 
-  <dialog id="custom-dialog">
-    <form method="dialog" id="custom-form">
-      <h3>Add Custom Item</h3>
-      <label>Name<input name="name" required /></label>
-      <label>Category<select name="category"><option>Apparel</option><option>Food</option><option>Ingredient</option><option>Misc</option></select></label>
-      <label>Condition<input name="condition" placeholder="Standard" /></label>
-      <label>Quantity<input name="qty" type="number" min="1" value="1" required /></label>
-      <label>Price<input name="price" type="number" min="0" value="0" required /></label>
-      <div class="dialog-actions"><button value="cancel">Cancel</button><button class="primary-btn" value="default">Add Item</button></div>
-    </form>
-  </dialog>
+<div class="modalback" id="itemModal"><div class="modal"><div class="paneltitle"><h4>Add Custom Item</h4><button class="btn secondary" data-close="itemModal">Close</button></div><div class="panelbody"><div class="formgrid">
+<label>Name<input class="input" id="newName"></label><label>Category<input class="input" id="newCat" placeholder="Apparel, Food…"></label>
+<label>Condition<input class="input" id="newCond" value="Standard"></label><label>Quantity<input class="input" id="newQty" type="number" min="0" value="1"></label>
+<label>Price<input class="input" id="newPrice" type="number" min="0" value="1"></label>
+</div><button class="btn" id="saveItem" style="margin-top:14px">Add Item</button></div></div></div>
 
-  <script type="module" src="./src/app.js"></script>
+<div class="modalback" id="employeeModal"><div class="modal"><div class="paneltitle"><h4>Add Employee</h4><button class="btn secondary" data-close="employeeModal">Close</button></div><div class="panelbody"><div class="formgrid">
+<label>Name<input class="input" id="empName"></label><label>Role<select class="select" id="empRole"><option>Employee</option><option>Manager</option><option>Owner</option></select></label>
+</div><button class="btn" id="saveEmployee" style="margin-top:14px">Add Employee</button></div></div></div>
+
+<script>
+const defaultData = {
+ settings:{business:"Golden Sands Caravan",location:"Dawnstar · Skyrim",threshold:3,currency:"septims"},
+ coffers:12450,
+ items:[
+  {id:1,name:"Moon Monk Robes",category:"Apparel",condition:"Exquisite",qty:6,price:850},
+  {id:2,name:"Khajiit Merchant Robes",category:"Apparel",condition:"Standard",qty:11,price:500},
+  {id:3,name:"Moon Sugar",category:"Ingredients",condition:"Standard",qty:18,price:75},
+  {id:4,name:"Elsweyr Fondue",category:"Food",condition:"Fresh",qty:9,price:120},
+  {id:5,name:"Salt Pile",category:"Ingredients",condition:"Standard",qty:24,price:20},
+  {id:6,name:"Fine Leather Boots",category:"Apparel",condition:"Fair",qty:3,price:260},
+  {id:7,name:"Caravan Spice Blend",category:"Food",condition:"Standard",qty:2,price:95},
+  {id:8,name:"Silver Necklace",category:"Jewelry",condition:"Exquisite",qty:4,price:420}
+ ],
+ sales:[],
+ employees:[{name:"Ko'vash",role:"Owner",active:true},{name:"S'jara",role:"Employee",active:true}],
+ cofferEntries:[]
+};
+let data = JSON.parse(localStorage.getItem("gsl_v2")||"null") || structuredClone(defaultData);
+let cart = {};
+const $=id=>document.getElementById(id);
+const money=n=>Number(n||0).toLocaleString()+" "+data.settings.currency;
+function save(){localStorage.setItem("gsl_v2",JSON.stringify(data));renderAll()}
+function categories(){return [...new Set(data.items.map(x=>x.category))].sort()}
+function currentTodaySales(){let t=new Date().toDateString();return data.sales.filter(s=>new Date(s.date).toDateString()===t).reduce((a,b)=>a+b.total,0)}
+function nav(page){
+ document.querySelectorAll(".page").forEach(x=>x.classList.toggle("active",x.id===page));
+ document.querySelectorAll(".navbtn").forEach(x=>x.classList.toggle("active",x.dataset.page===page));
+ const label=document.querySelector(`.navbtn[data-page="${page}"]`)?.innerText.trim()||"Home"; $("topTitle").textContent=label;
+ $("sidebar").classList.remove("open"); renderAll()
+}
+document.querySelectorAll(".navbtn").forEach(b=>b.onclick=()=>nav(b.dataset.page));
+document.querySelectorAll("[data-jump]").forEach(b=>b.onclick=()=>nav(b.dataset.jump));
+$("menubtn").onclick=()=>$("sidebar").classList.toggle("open");
+document.querySelectorAll("[data-close]").forEach(b=>b.onclick=()=>$(b.dataset.close).classList.remove("show"));
+
+function renderFilters(){
+ const cats=categories();
+ [$("catFilter"),$("invCat")].forEach(sel=>{
+  const val=sel.value; sel.innerHTML='<option>All categories</option>'+cats.map(c=>`<option>${c}</option>`).join(""); if([...sel.options].some(o=>o.value===val))sel.value=val;
+ });
+ $("intakeItem").innerHTML=data.items.map(i=>`<option value="${i.id}">${i.name} — ${i.condition} (${i.qty})</option>`).join("");
+}
+function filteredItems(search,cat){
+ const q=(search||"").toLowerCase();
+ return data.items.filter(i=>(!q||(i.name+" "+i.condition+" "+i.category).toLowerCase().includes(q)) && (!cat||cat==="All categories"||i.category===cat));
+}
+function renderRegister(){
+ const list=filteredItems($("itemSearch").value,$("catFilter").value); $("itemCount").textContent=list.length+" items";
+ $("itemGrid").innerHTML=list.map(i=>`<div class="itemcard"><div><b>${i.name}</b><small>${i.condition} · ${i.qty} in stock<br>${money(i.price)}</small></div><button class="btn secondary" onclick="addCart(${i.id})" ${i.qty<=0?"disabled":""}>Add</button></div>`).join("")||'<div class="empty">No wares found.</div>';
+ renderCart();
+}
+window.addCart=id=>{let i=data.items.find(x=>x.id===id);if(!i)return;let q=cart[id]||0;if(q<i.qty)cart[id]=q+1;renderCart()}
+window.changeQty=(id,d)=>{cart[id]=(cart[id]||0)+d;if(cart[id]<=0)delete cart[id];let i=data.items.find(x=>x.id===id);if(i&&cart[id]>i.qty)cart[id]=i.qty;renderCart()}
+function renderCart(){
+ const entries=Object.entries(cart);
+ $("cart").innerHTML=entries.length?entries.map(([id,q])=>{let i=data.items.find(x=>x.id==id);return `<div class="cartline"><div><b>${i.name}</b><small style="display:block">${i.condition} · ${money(i.price)} each</small></div><div><button class="qtybtn" onclick="changeQty(${id},-1)">−</button> ${q} <button class="qtybtn" onclick="changeQty(${id},1)">+</button></div><b>${money(i.price*q)}</b></div>`}).join(""):'<div class="empty">No items in current sale.</div>';
+ const sub=entries.reduce((a,[id,q])=>a+(data.items.find(x=>x.id==id)?.price||0)*q,0);let disc=Math.min(100,Math.max(0,Number($("discount").value)||0));let total=Math.round(sub*(1-disc/100));
+ $("subtotal").textContent=money(sub);$("grandtotal").textContent=money(total)
+}
+$("discount").oninput=renderCart;$("itemSearch").oninput=renderRegister;$("catFilter").onchange=renderRegister;
+$("clearCart").onclick=()=>{cart={};$("discount").value=0;renderCart()};
+$("completeSale").onclick=()=>{
+ const entries=Object.entries(cart);if(!entries.length)return alert("Add at least one item to the sale.");
+ for(const [id,q] of entries){let i=data.items.find(x=>x.id==id);if(!i||i.qty<q)return alert("Not enough stock for "+(i?.name||"an item"))}
+ const sub=entries.reduce((a,[id,q])=>a+data.items.find(x=>x.id==id).price*q,0),disc=Math.min(100,Math.max(0,Number($("discount").value)||0)),total=Math.round(sub*(1-disc/100));
+ const items=entries.map(([id,q])=>{let i=data.items.find(x=>x.id==id);i.qty-=q;return `${i.name} x${q}`});
+ data.sales.unshift({date:new Date().toISOString(),seller:"Ko'vash",items,discount:disc,total});data.coffers+=total;cart={};$("discount").value=0;save();alert("Sale completed and inventory updated.")
+};
+function renderInventory(){
+ const list=filteredItems($("invSearch").value,$("invCat").value);
+ $("inventoryRows").innerHTML=list.map(i=>`<tr><td><b>${i.name}</b></td><td>${i.category}</td><td>${i.condition}</td><td class="${i.qty<=data.settings.threshold?"stock-low":""}">${i.qty}</td><td>${money(i.price)}</td><td>${i.qty===0?"Out":i.qty<=data.settings.threshold?"Low":"In Stock"}</td></tr>`).join("")||'<tr><td colspan="6" class="empty">No inventory found.</td></tr>'
+}
+$("invSearch").oninput=renderInventory;$("invCat").onchange=renderInventory;
+$("openAdd").onclick=()=>$("itemModal").classList.add("show");
+$("saveItem").onclick=()=>{
+ let name=$("newName").value.trim(),cat=$("newCat").value.trim();if(!name||!cat)return alert("Name and category are required.");
+ data.items.push({id:Date.now(),name,category:cat,condition:$("newCond").value.trim()||"Standard",qty:Number($("newQty").value)||0,price:Number($("newPrice").value)||0});$("itemModal").classList.remove("show");save()
+};
+$("receiveStock").onclick=()=>{let i=data.items.find(x=>x.id==$("intakeItem").value),q=Number($("intakeQty").value)||0;if(!i||q<=0)return alert("Choose an item and quantity.");i.qty+=q;save();alert(`${q} ${i.name} received into stock.`)};
+function renderSales(){
+ $("salesRows").innerHTML=data.sales.map(s=>`<tr><td>${new Date(s.date).toLocaleString()}</td><td>${s.seller}</td><td>${s.items.join(", ")}</td><td>${s.discount}%</td><td><b>${money(s.total)}</b></td></tr>`).join("")||'<tr><td colspan="5" class="empty">No completed sales yet.</td></tr>'
+}
+function renderEmployees(){
+ $("employeeCards").innerHTML=data.employees.map(e=>`<div class="panel"><div class="paneltitle"><h4>${e.name}</h4><span>${e.active?"Active":"Inactive"}</span></div><div class="panelbody"><span class="kicker">Role</span><h3 style="margin:5px 0 10px">${e.role}</h3><small>Prototype account · authentication comes with backend setup.</small></div></div>`).join("")
+}
+$("addEmployeeBtn").onclick=()=>$("employeeModal").classList.add("show");
+$("saveEmployee").onclick=()=>{let n=$("empName").value.trim();if(!n)return alert("Employee name required.");data.employees.push({name:n,role:$("empRole").value,active:true});$("employeeModal").classList.remove("show");save()};
+$("recordCoffer").onclick=()=>{let amt=Number($("cofferAmount").value)||0;if(amt<=0)return alert("Enter an amount.");let type=$("cofferType").value;if(type==="Withdrawal"&&amt>data.coffers)return alert("Coffers do not contain enough septims.");data.coffers+=type==="Deposit"?amt:-amt;data.cofferEntries.unshift({date:new Date().toISOString(),type,amount:amt,reason:$("cofferReason").value});save()};
+function renderLow(){let list=data.items.filter(i=>i.qty<=data.settings.threshold);$("lowRows").innerHTML=list.map(i=>`<tr><td>${i.name}</td><td>${i.condition}</td><td class="stock-low">${i.qty}</td><td>${data.settings.threshold}</td></tr>`).join("")||'<tr><td colspan="4" class="empty">No low-stock wares.</td></tr>'}
+function renderDashboard(){
+ $("statCoffers").textContent=Number(data.coffers).toLocaleString();$("statToday").textContent=currentTodaySales().toLocaleString();$("statTx").textContent=data.sales.length;$("statLow").textContent=data.items.filter(i=>i.qty<=data.settings.threshold).length;
+ $("recentActivity").innerHTML=data.sales.slice(0,6).map(s=>`<div class="activity"><span class="dot"></span><div><b>${money(s.total)} sale by ${s.seller}</b><small style="display:block">${s.items.join(", ")} · ${new Date(s.date).toLocaleString()}</small></div></div>`).join("")||'<div class="empty">The ledger has no sales yet.</div>';
+ let total=data.items.length,healthy=data.items.filter(i=>i.qty>data.settings.threshold).length,pct=total?Math.round(healthy/total*100):100;
+ $("stockHealth").innerHTML=`<span class="kicker">Healthy inventory</span><h3 style="margin:5px 0">${healthy} of ${total} wares</h3><div class="progress"><span style="width:${pct}%"></span></div><small>${pct}% above low-stock threshold</small>`
+}
+function renderCoffers(){
+ $("cofferBig").textContent=Number(data.coffers).toLocaleString();$("salesAdded").textContent=data.sales.reduce((a,b)=>a+b.total,0).toLocaleString();
+ $("depositTotal").textContent=data.cofferEntries.filter(x=>x.type==="Deposit").reduce((a,b)=>a+b.amount,0).toLocaleString();$("withdrawTotal").textContent=data.cofferEntries.filter(x=>x.type==="Withdrawal").reduce((a,b)=>a+b.amount,0).toLocaleString()
+}
+function renderSettings(){
+ $("setBusiness").value=data.settings.business;$("setLocation").value=data.settings.location;$("setThreshold").value=data.settings.threshold;$("setCurrency").value=data.settings.currency
+}
+$("saveSettings").onclick=()=>{data.settings.business=$("setBusiness").value.trim()||data.settings.business;data.settings.location=$("setLocation").value.trim()||data.settings.location;data.settings.threshold=Math.max(0,Number($("setThreshold").value)||0);data.settings.currency=$("setCurrency").value.trim()||"septims";save();alert("Settings saved.")};
+$("resetData").onclick=()=>{if(confirm("Reset all prototype data stored in this browser?")){data=structuredClone(defaultData);cart={};save()}};
+function renderAll(){renderFilters();renderRegister();renderInventory();renderSales();renderEmployees();renderLow();renderDashboard();renderCoffers();renderSettings();document.querySelector(".badge").textContent=data.settings.location}
+renderAll();
+</script>
 </body>
 </html>
