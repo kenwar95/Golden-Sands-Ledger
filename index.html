@@ -1,53 +1,32 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="ledger">
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Golden Sands Trading Ledger</title>
-  <meta name="theme-color" content="#2a1c10" />
-  <link rel="stylesheet" href="styles.css" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Golden Sands Trading Company</title>
+  <meta name="theme-color" content="#2b1d12">
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <header class="topbar">
-    <button id="navToggle" class="nav-toggle" aria-label="Open menu">☰</button>
-    <div class="brand">
-      <div class="brand-mark">GS</div>
-      <div><h1>Golden Sands Trading Ledger</h1><p>Caravan commerce, inventory & accounts</p></div>
-    </div>
-    <div class="top-actions"><span class="status-dot"></span><span class="status-text">Ledger Online</span><div class="user-badge"><strong>Ko'vash</strong><small>Owner</small></div></div>
+    <button id="navToggle" class="icon-btn mobile-only">☰</button>
+    <div class="brand"><div class="seal">GS</div><div><h1>Golden Sands Trading Company</h1><p>Merchant Ledger & Caravan Records</p></div></div>
+    <div class="topbar-right"><span class="status"><span class="dot"></span> Ledger Online</span><div class="identity"><strong>Ko'vash</strong><small>Company Owner</small></div></div>
   </header>
-  <div id="backdrop" class="backdrop"></div>
-  <div class="layout">
-    <aside id="sidenav" class="sidenav">
-      <div class="business-card"><span class="eyebrow">Active Business</span><strong>Golden Sands Caravan</strong><small>Dawnstar · Skyrim</small></div>
-      <nav class="nav-list">
-        <button class="nav-item active" data-view="dashboard"><span>⌂</span> Dashboard</button>
-        <button class="nav-item" data-view="register"><span>✦</span> Register</button>
-        <button class="nav-item" data-view="inventory"><span>▦</span> Inventory</button>
-        <button class="nav-item" data-view="intake"><span>⇩</span> Stock Intake</button>
-        <button class="nav-item" data-view="transfers"><span>⇄</span> Transfers</button>
-        <button class="nav-item" data-view="coffers"><span>◈</span> Coffers</button>
-        <button class="nav-item" data-view="employees"><span>♟</span> Employees</button>
-        <button class="nav-item" data-view="history"><span>≡</span> Transaction History</button>
-        <button class="nav-item" data-view="market"><span>⌁</span> Market</button>
-        <div class="nav-separator"></div>
-        <button class="nav-item" data-view="settings"><span>⚙</span> Settings</button>
-      </nav>
-      <div class="sidebar-footer"><small>Golden Sands Ledger</small><span>Phase 2 · Frontend Prototype</span></div>
+  <div class="app-shell">
+    <aside id="sidebar" class="sidebar">
+      <div class="company-switcher panel-dark"><label>Active Business</label><select id="businessSelect"></select><small id="businessLocation"></small></div>
+      <nav id="nav"></nav>
+      <div class="sidebar-footer"><div class="mini-seal">GS</div><div><strong>Golden Sands</strong><small>Company Ledger</small></div></div>
     </aside>
-    <main class="content">
-      <div class="page-head"><div><span class="eyebrow" id="pageEyebrow">Overview</span><h2 id="pageTitle">Dashboard</h2></div><div id="pageActions"></div></div>
+    <main class="main">
+      <div class="page-heading"><div><span id="eyebrow" class="eyebrow">Company Overview</span><h2 id="pageTitle">Dashboard</h2></div><div id="pageActions" class="page-actions"></div></div>
       <section id="app"></section>
     </main>
-    <aside class="patchnotes">
-      <div class="patch-head"><span class="eyebrow">Ledger Notes</span><strong>Caravan Bulletin</strong></div>
-      <article><time>Today</time><p>Phase 2 interface is active. Permanent cloud storage comes next.</p></article>
-      <article><time>System</time><p>Inventory, register, coffers, employees, transfers and history are available in this prototype.</p></article>
-      <article><time>Reminder</time><p>Prototype data is saved in this browser only.</p></article>
-    </aside>
+    <aside id="notebookPanel" class="notebook-panel"><div class="notebook-title"><span>Caravan Notebook</span><button class="small-link" onclick="go('notebook')">Open Ledger</button></div><div id="notebookPreview"></div></aside>
   </div>
-  <footer class="footer"><span>Golden Sands Trading Ledger · Skyrim RP business system</span></footer>
-  <div id="modalRoot"></div>
+  <footer class="footer">Golden Sands Trading Company · Skyrim Roleplay Ledger</footer>
+  <div id="backdrop" class="backdrop"></div><div id="modalRoot"></div>
   <script src="app.js"></script>
 </body>
 </html>
