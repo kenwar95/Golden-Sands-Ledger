@@ -1,8 +1,14 @@
-# Golden Sands Trading Ledger — Phase 5.1
+# Golden Sands Trading Ledger — Phase 5.2
 
-Corrected medieval visual build.
+This build uses the complete working Phase 4.1 project as its foundation and appends the medieval visual layer afterward.
 
-Phase 5 mistakenly replaced the full Phase 4.1 stylesheet with only the medieval override layer. Phase 5.1 restores the complete working Phase 4.1 CSS and then layers the medieval wooden-table / leather-tab / parchment-book / scroll-receipt theme on top.
+## Important
+This fixes the earlier Phase 5 / 5.1 issue where the base stylesheet was missing.
 
-## Install
-Replace `index.html`, `styles.css`, and `app.js` in the root of the GitHub Pages repository and commit to `main`.
+## Upload
+Replace these files in the repository root:
+- index.html
+- styles.css
+- app.js
+
+The new `styles.css` should be much larger than the broken 117-line version.
