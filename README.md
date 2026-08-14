@@ -1,7 +1,8 @@
-# Golden Sands Trading Ledger — Phase 5
+# Golden Sands Trading Ledger — Phase 5.1
 
-Medieval / Skyrim-inspired visual overhaul.
+Corrected medieval visual build.
 
-This keeps the Phase 4.1 business access, stock provenance, transfer contributor tracking, multi-participant sales, receipts, and employee logic while restyling the project as a merchant ledger on a wooden table.
+Phase 5 mistakenly replaced the full Phase 4.1 stylesheet with only the medieval override layer. Phase 5.1 restores the complete working Phase 4.1 CSS and then layers the medieval wooden-table / leather-tab / parchment-book / scroll-receipt theme on top.
 
-Upload `index.html`, `styles.css`, and `app.js` to the root of your existing GitHub Pages repository.
+## Install
+Replace `index.html`, `styles.css`, and `app.js` in the root of the GitHub Pages repository and commit to `main`.
