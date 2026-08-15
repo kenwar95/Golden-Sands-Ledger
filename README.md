@@ -1,14 +1,17 @@
-# Golden Sands Trading Ledger — Phase 6
+# Golden Sands Trading Ledger — Phase 6.1
 
-Phase 6 is a structural visual rebuild, not a skin of the old dashboard.
+Visual polish pass on Phase 6.
 
-It preserves the working Phase 4.1 logic while replacing the outer interface with:
-- a wooden merchant table background
-- parchment title plaques
-- leather bookmark navigation
-- a real open-book application shell with center gutter
-- a separate physical receipt scroll with wax seal
-- a parchment notebook card
-- medieval desk controls
+Changes focus only on matching the approved concept more closely:
+- wider/flatter open ledger
+- stronger leather cover perimeter
+- aged parchment texture
+- more natural bookmark tabs
+- longer/narrower torn-edge receipt scroll
+- larger wax seal
+- more physical notebook appearance
+- softer ledger cards so the interface feels less like a modern dashboard
+
+All Phase 6 functionality is unchanged.
 
 Upload `index.html`, `styles.css`, and `app.js` to the root of the existing GitHub Pages repository.

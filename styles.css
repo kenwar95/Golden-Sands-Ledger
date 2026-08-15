@@ -272,3 +272,256 @@ repeating-linear-gradient(0deg,rgba(90,58,29,.025) 0 1px,transparent 1px 4px),li
   .book-gutter{display:none}.page-left{width:100%}.page-right{display:none}
   .g4,.g3,.g2,.business-grid,.register-grid,.form-grid{grid-template-columns:1fr}.span2{grid-column:span 1}.item-grid{grid-template-columns:1fr}
 }
+
+
+/* =========================================================
+   PHASE 6.1 — VISUAL POLISH
+   Closer to the approved desk + open-book concept.
+   ========================================================= */
+
+body{
+  background:
+    radial-gradient(circle at 14% 5%,rgba(255,204,120,.20),transparent 18%),
+    radial-gradient(circle at 86% 8%,rgba(0,0,0,.26),transparent 28%),
+    linear-gradient(rgba(15,7,2,.03),rgba(15,7,2,.16)),
+    repeating-linear-gradient(90deg,
+      #2c180f 0 88px,
+      #3e2416 88px 93px,
+      #24130b 93px 96px,
+      #4a2918 96px 164px
+    )!important;
+}
+
+.desk-scene{
+  max-width:1800px;
+  margin:0 auto;
+  padding:18px 22px 14px;
+}
+
+/* flatter, wider header like a merchant desk plaque */
+.desk-header{
+  grid-template-columns:minmax(420px,1.45fr) minmax(275px,.8fr) minmax(330px,.82fr) 150px;
+  gap:15px;
+  margin-bottom:16px;
+}
+.company-plaque,.money-plaque{
+  box-shadow:
+    0 9px 18px rgba(0,0,0,.35),
+    inset 0 0 0 3px rgba(255,255,255,.10),
+    inset 0 -10px 20px rgba(109,72,34,.07);
+}
+.company-plaque:before,.money-plaque:before{
+  content:"";
+  position:absolute;inset:4px;
+  border:1px solid rgba(105,70,36,.14);
+  pointer-events:none;
+}
+.company-plaque,.money-plaque{position:relative}
+.company-plaque h1{font-size:25px}
+.active-business-plaque{
+  border-radius:3px;
+  box-shadow:0 9px 18px rgba(0,0,0,.38),inset 0 0 0 2px rgba(214,166,92,.05);
+}
+
+/* overall desk composition */
+.workspace{
+  grid-template-columns:185px minmax(0,1fr) 300px;
+  gap:12px;
+}
+
+/* more natural tab spacing and slight overlap into book */
+.ledger-tabs{
+  padding-top:68px;
+  margin-right:-4px;
+}
+.nav-item{
+  min-height:42px;
+  margin-bottom:8px;
+  padding:10px 13px;
+  box-shadow:
+    0 6px 11px rgba(0,0,0,.30),
+    inset 0 1px rgba(255,255,255,.04)!important;
+}
+.nav-item:nth-of-type(odd){transform:translateX(3px)}
+.nav-item.active{transform:translateX(8px)}
+.nav-item:before{
+  content:"";
+  position:absolute;left:4px;top:5px;bottom:5px;width:1px;
+  background:rgba(229,188,117,.12)
+}
+
+/* book cover has stronger visible leather perimeter */
+.book-shell{
+  min-height:720px;
+  padding:12px;
+  border-radius:28px;
+  background:
+    linear-gradient(135deg,#51301e 0,#2f1b11 35%,#1c1009 100%)!important;
+  box-shadow:
+    0 22px 50px rgba(0,0,0,.58),
+    inset 0 0 0 3px #71472a,
+    inset 0 0 0 8px #2c180f!important;
+}
+.book-cover{
+  inset:5px;
+  border:2px solid rgba(198,137,70,.28);
+  border-radius:21px;
+  box-shadow:inset 0 0 20px rgba(0,0,0,.15);
+}
+
+/* slightly lower/wider pages to feel like an open tome */
+.book-pages{
+  min-height:692px;
+  border-radius:17px 17px 13px 13px;
+  box-shadow:
+    inset 0 12px 20px rgba(255,255,255,.08),
+    inset 0 -8px 14px rgba(83,50,24,.09);
+}
+.page-left{
+  background:
+    radial-gradient(circle at 40% 4%,rgba(255,255,255,.42),transparent 28%),
+    radial-gradient(circle at 10% 80%,rgba(126,88,43,.10),transparent 22%),
+    repeating-linear-gradient(0deg,rgba(89,58,29,.028) 0 1px,transparent 1px 4px),
+    linear-gradient(90deg,#c5a06d 0,#ead0a1 7%,#f2dfb9 88%,#ceb07c 100%)!important;
+}
+.page-right{
+  background:
+    radial-gradient(circle at 60% 5%,rgba(255,255,255,.38),transparent 28%),
+    radial-gradient(circle at 89% 84%,rgba(126,88,43,.09),transparent 21%),
+    repeating-linear-gradient(0deg,rgba(89,58,29,.028) 0 1px,transparent 1px 4px),
+    linear-gradient(90deg,#c9a676 0,#efdab0 10%,#ecd2a0 90%,#c39b68 100%)!important;
+}
+.page-left:after,.page-right:after{
+  content:"";
+  position:absolute;inset:0;
+  pointer-events:none;
+  background:
+    radial-gradient(circle at 18% 20%,rgba(92,55,25,.035) 0 1px,transparent 1.5px),
+    radial-gradient(circle at 72% 64%,rgba(92,55,25,.04) 0 1px,transparent 1.5px);
+  background-size:28px 32px,36px 40px;
+  mix-blend-mode:multiply;
+}
+.book-gutter{
+  width:26px;
+  background:linear-gradient(90deg,
+    rgba(62,36,18,.28),
+    rgba(255,255,255,.10) 42%,
+    rgba(255,255,255,.04) 52%,
+    rgba(58,33,17,.30)
+  )!important;
+  box-shadow:0 0 18px rgba(43,24,11,.24);
+}
+.book-content{
+  padding:28px 34px 46px;
+}
+.page-heading{
+  padding-bottom:12px;
+  margin-bottom:17px;
+}
+.page-heading h2{
+  font-size:31px;
+}
+
+/* soften modern card look so items feel written into the ledger */
+.card,.scroll-card,.business-card{
+  background:rgba(244,224,185,.30)!important;
+  border:1px solid rgba(95,62,31,.25)!important;
+}
+.card:before,.scroll-card:before{
+  content:"";
+  position:absolute;inset:3px;
+  border:1px solid rgba(105,69,36,.05);
+  pointer-events:none;
+}
+.stat{
+  min-height:88px;
+  background:rgba(244,226,190,.22)!important;
+}
+.stat .value{font-size:23px}
+.business-card{
+  background:rgba(244,226,190,.25)!important;
+}
+
+/* make the scroll visually narrower/longer and more rolled */
+.desk-right{
+  padding-top:22px;
+}
+.scroll-holder{
+  margin:0 8px 26px;
+}
+.scroll-rod{
+  height:28px;
+  border-radius:14px;
+  background:
+    linear-gradient(#c18d53 0,#8b572e 45%,#67401f 55%,#a66d38 100%)!important;
+  box-shadow:0 6px 13px rgba(0,0,0,.38),inset 0 1px rgba(255,255,255,.15);
+}
+.receipt-scroll{
+  min-height:500px;
+  margin:-4px 15px;
+  padding:31px 18px 42px;
+  clip-path:polygon(
+    1% 0,99% 0,98% 3%,100% 6%,98% 10%,100% 14%,98% 18%,100% 22%,98% 26%,100% 30%,
+    98% 34%,100% 38%,98% 42%,100% 46%,98% 50%,100% 54%,98% 58%,100% 62%,98% 66%,
+    100% 70%,98% 74%,100% 78%,98% 82%,100% 86%,98% 90%,100% 94%,98% 98%,99% 100%,
+    1% 100%,2% 97%,0 93%,2% 89%,0 85%,2% 81%,0 77%,2% 73%,0 69%,2% 65%,0 61%,
+    2% 57%,0 53%,2% 49%,0 45%,2% 41%,0 37%,2% 33%,0 29%,2% 25%,0 21%,2% 17%,
+    0 13%,2% 9%,0 5%,2% 2%
+  );
+  background:
+    radial-gradient(circle at 45% 8%,rgba(255,255,255,.24),transparent 24%),
+    repeating-linear-gradient(0deg,rgba(89,56,28,.026) 0 1px,transparent 1px 4px),
+    linear-gradient(90deg,#c18c54,#ebcb98 12%,#f0d5a6 88%,#bd854e)!important;
+}
+.scroll-heading{
+  font-size:10px;
+  letter-spacing:.16em;
+}
+.receipt-scroll h3{
+  font-size:25px;
+  margin-bottom:20px;
+}
+.wax-seal{
+  width:54px;height:54px;
+  right:20px;bottom:-10px;
+  box-shadow:0 6px 11px rgba(0,0,0,.38),inset 0 0 0 4px rgba(255,255,255,.04);
+}
+
+/* notebook looks like a smaller bound book on the desk */
+.notebook-card{
+  margin:0 10px;
+  border:5px solid #2f1a10!important;
+  border-radius:8px;
+  background:
+    repeating-linear-gradient(0deg,rgba(88,56,29,.025) 0 1px,transparent 1px 4px),
+    linear-gradient(#e7cc98,#c8a373)!important;
+  box-shadow:0 11px 22px rgba(0,0,0,.35),inset 0 0 0 2px #694127!important;
+}
+
+/* desk buttons more like carved labels */
+.desk-tools button{
+  min-width:120px;
+  border-radius:3px;
+  border:1px solid #775035;
+  background:linear-gradient(#4c3020,#28170f)!important;
+  box-shadow:0 5px 10px rgba(0,0,0,.28),inset 0 1px rgba(255,255,255,.04);
+}
+
+/* modal should also feel like a loose parchment sheet */
+.modal{
+  border-radius:2px;
+  box-shadow:0 24px 70px rgba(0,0,0,.52)!important;
+}
+
+/* desktop scale */
+@media(min-width:1500px){
+  .book-shell{min-height:760px}
+  .book-pages{min-height:732px}
+  .book-content{padding:30px 38px 48px}
+}
+
+@media(max-width:1450px){
+  .workspace{grid-template-columns:175px minmax(0,1fr) 270px}
+  .book-content{padding:24px 26px 40px}
+}
+
