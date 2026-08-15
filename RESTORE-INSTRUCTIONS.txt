@@ -1,0 +1,17 @@
+GOLDEN SANDS LEDGER — ORIGINAL DESIGN RESTORE
+
+This is the last pre-medieval-style build (Phase 4.1).
+
+It preserves the functionality developed before the visual experiments,
+including business-specific employee access, stock provenance/contributor
+tracking, transfer contributor tracking, multiple sale participants,
+receipts, and employee logic.
+
+UPLOAD THESE FILES TO THE ROOT OF YOUR GITHUB REPOSITORY:
+- index.html
+- styles.css
+- app.js
+
+Replace the current versions of those files.
+Do not upload any medieval-v2.css or ledger-book.css file for this restore.
+GitHub Pages should remain configured to deploy from main / (root).
