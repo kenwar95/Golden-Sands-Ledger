@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Golden Sands Trading Company</title>
+  <meta name="theme-color" content="#24150d">
+  <link rel="stylesheet" href="ledger-book.css?v=70">
+</head>
+<body>
+  <div class="scene">
+    <div class="candle-glow"></div>
+    <div class="desk-object coins"></div>
+    <div class="desk-object quill"></div>
+
+    <header class="top-plaque">
+      <section class="title-scroll">
+        <div class="round-seal">GS</div>
+        <div>
+          <span class="kicker">Merchant Ledger</span>
+          <h1>Golden Sands Trading Company</h1>
+          <p>Honest trade across Skyrim</p>
+        </div>
+      </section>
+
+      <section class="current-business">
+        <span>Current Business</span>
+        <select id="businessSelect"></select>
+        <small id="businessLocation"></small>
+      </section>
+
+      <section class="coffer-strip">
+        <div><span>Company Coffers</span><strong id="companyCoffersDisplay">0 septims</strong></div>
+        <div><span>Business Coffers</span><strong id="businessCoffersDisplay">0 septims</strong></div>
+      </section>
+
+      <section class="user-strip">
+        <strong>Ko'vash</strong>
+        <small>Company Owner</small>
+      </section>
+    </header>
+
+    <div class="desk-workspace">
+      <aside id="sidebar" class="bookmark-stack">
+        <div class="bookmark-title">Ledger Sections</div>
+        <nav id="nav"></nav>
+      </aside>
+
+      <main class="book">
+        <div class="cover-layer"></div>
+        <div class="page-block">
+          <div class="paper paper-left"></div>
+          <div class="paper paper-right"></div>
+          <div class="center-fold"></div>
+
+          <div class="book-ui">
+            <div class="page-heading">
+              <div>
+                <span id="eyebrow" class="eyebrow">Company Overview</span>
+                <h2 id="pageTitle">Dashboard</h2>
+              </div>
+              <div id="pageActions" class="page-actions"></div>
+            </div>
+
+            <section id="app"></section>
+          </div>
+        </div>
+        <span class="corner c1"></span>
+        <span class="corner c2"></span>
+        <span class="corner c3"></span>
+        <span class="corner c4"></span>
+      </main>
+
+      <aside class="right-desk">
+        <section class="receipt-object">
+          <div class="scroll-roller roller-top"></div>
+          <div id="globalReceiptScroll" class="receipt-scroll">
+            <div class="scroll-brand">Golden Sands</div>
+            <h3>Receipt</h3>
+            <div class="receipt-idle">The next sale will be written here.</div>
+          </div>
+          <div class="scroll-roller roller-bottom"></div>
+          <div class="wax">GS</div>
+        </section>
+
+        <section class="mini-ledger">
+          <header>
+            <span>Caravan Notebook</span>
+            <button onclick="go('notebook')">Open</button>
+          </header>
+          <div id="notebookPreview"></div>
+        </section>
+      </aside>
+    </div>
+
+    <footer class="desk-actions">
+      <button onclick="go('register')">✦ Register</button>
+      <button onclick="go('inventory')">▦ Inventory</button>
+      <button onclick="go('transfers')">⇄ Transfers</button>
+      <button onclick="go('employees')">♟ Employees</button>
+      <button onclick="go('history')">≡ Receipts</button>
+    </footer>
+  </div>
+
+  <div id="backdrop" class="backdrop"></div>
+  <div id="modalRoot"></div>
+  <script src="app.js"></script>
+</body>
+</html>
