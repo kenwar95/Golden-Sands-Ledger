@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Golden Sands Trading Company</title>
+  <meta name="theme-color" content="#24150d">
+  <style>
+
+:root{
+  --wood1:#28150c;
+  --wood2:#3b2114;
+  --wood3:#502c19;
+  --leather1:#2d190f;
+  --leather2:#5b321d;
+  --leather3:#7a4526;
+  --brass:#c69b52;
+  --brass2:#e3c67f;
+  --paper1:#e5c994;
+  --paper2:#efd9ae;
+  --paper3:#cba874;
+  --ink:#2b2118;
+  --muted:#6c573e;
+  --line:rgba(83,54,27,.27);
+  --green:#4d674a;
+  --red:#7b352c;
+  --blue:#526c79;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;font-family:Georgia,"Times New Roman",serif;color:var(--ink)}
+body{
+  min-height:100vh;
+  background:
+    radial-gradient(circle at 8% 3%,rgba(255,192,94,.22),transparent 18%),
+    radial-gradient(circle at 87% 10%,rgba(0,0,0,.24),transparent 27%),
+    linear-gradient(rgba(18,8,3,.02),rgba(18,8,3,.14)),
+    repeating-linear-gradient(90deg,var(--wood1) 0 92px,var(--wood2) 92px 98px,#201008 98px 102px,var(--wood3) 102px 177px);
+  background-attachment:fixed;
+}
+body:before{
+  content:"";position:fixed;inset:0;pointer-events:none;
+  background:
+    repeating-linear-gradient(0deg,transparent 0 4px,rgba(0,0,0,.055) 4px 5px),
+    radial-gradient(ellipse at 22% 72%,transparent 0 22%,rgba(0,0,0,.11) 22.5% 23%,transparent 23.5%);
+  opacity:.8
+}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer}
+.scene{max-width:1900px;margin:auto;padding:18px 22px 14px;position:relative;z-index:1;min-height:100vh}
+.candle-glow{position:fixed;left:0;top:0;width:320px;height:280px;background:radial-gradient(circle at 25% 20%,rgba(255,188,77,.22),transparent 58%);pointer-events:none}
+.top-plaque{display:grid;grid-template-columns:minmax(470px,1.5fr) 290px 330px 150px;gap:14px;margin-bottom:16px}
+.title-scroll,.coffer-strip{
+  background:
+    radial-gradient(circle at 30% 20%,rgba(255,255,255,.12),transparent 30%),
+    repeating-linear-gradient(0deg,rgba(83,54,28,.024) 0 1px,transparent 1px 4px),
+    linear-gradient(#efd9ad,#d4af79);
+  border:2px solid #71482a;box-shadow:0 8px 18px rgba(0,0,0,.35),inset 0 0 0 3px rgba(255,255,255,.09)
+}
+.title-scroll{display:flex;align-items:center;gap:14px;padding:13px 17px;position:relative}
+.title-scroll:before,.title-scroll:after{content:"";position:absolute;top:8px;bottom:8px;width:10px;border:1px solid rgba(91,58,30,.22)}
+.title-scroll:before{left:5px}.title-scroll:after{right:5px}
+.round-seal{width:52px;height:52px;border:2px solid #75512d;border-radius:50%;display:grid;place-items:center;color:#684727;font-weight:bold;box-shadow:inset 0 0 0 3px rgba(117,81,45,.13)}
+.kicker,.title-scroll p,.current-business>span,.coffer-strip span{font-size:9px;text-transform:uppercase;letter-spacing:.13em}
+.title-scroll h1{font-size:25px;font-weight:normal;margin:2px 0 1px}.title-scroll p{margin:0;color:#74583a}
+.current-business,.user-strip{
+  background:linear-gradient(#4b2b1b,#26150d);border:2px solid #78492b;color:#efd8ad;box-shadow:0 8px 18px rgba(0,0,0,.38),inset 0 0 0 2px rgba(225,177,101,.05)
+}
+.current-business{padding:11px 15px;text-align:center}
+.current-business>span{color:#c7a364;display:block;margin-bottom:5px}
+.current-business select{width:100%;border:0;border-bottom:1px solid #8a6438;background:transparent;color:#f3dfb8;text-align:center;padding:4px;font-size:16px;outline:none}
+.current-business option{color:#24140d}.current-business small{display:block;color:#ad9777;margin-top:5px;font-size:10px}
+.coffer-strip{display:grid;grid-template-columns:1fr 1fr;padding:10px}
+.coffer-strip>div{padding:0 11px;display:flex;flex-direction:column;justify-content:center;border-left:1px solid rgba(89,57,29,.24)}
+.coffer-strip>div:first-child{border-left:0}.coffer-strip span{color:#715337}.coffer-strip strong{font-size:17px;margin-top:5px}
+.user-strip{display:flex;flex-direction:column;justify-content:center;text-align:center;padding:10px}.user-strip small{color:#ad9879;margin-top:3px}
+.desk-workspace{display:grid;grid-template-columns:188px minmax(0,1fr) 302px;gap:12px;align-items:start}
+
+/* Physical leather bookmarks */
+.bookmark-stack{padding-top:70px;margin-right:-6px;z-index:6}
+.bookmark-title{margin:0 0 10px 9px;color:#cfad6d;font-size:9px;text-transform:uppercase;letter-spacing:.14em}
+.nav-group-title{display:none}
+.nav-item{
+  width:100%;min-height:43px;margin:0 0 8px;padding:10px 13px;border:1px solid #75452a;border-right:0;border-radius:8px 0 0 8px;
+  background:linear-gradient(#653a22,#351e13);color:#efd7aa;text-align:left;position:relative;
+  box-shadow:0 6px 12px rgba(0,0,0,.3),inset 0 0 0 1px rgba(238,193,114,.05)
+}
+.nav-item:after{content:"";position:absolute;right:-14px;top:6px;border-top:15px solid transparent;border-bottom:15px solid transparent;border-left:14px solid #351e13}
+.nav-item:before{content:"";position:absolute;left:5px;top:5px;bottom:5px;width:1px;background:rgba(232,190,113,.13)}
+.nav-item span{display:inline-block;width:24px;color:#d6ad60}
+.nav-item:hover{background:linear-gradient(#7a4528,#452719)}.nav-item:hover:after{border-left-color:#452719}
+.nav-item.active{background:linear-gradient(#8d512c,#522d1a);border-color:#b37a40;color:#fff1c9;transform:translateX(8px)}
+.nav-item.active:after{border-left-color:#522d1a}
+
+/* The book is the interface */
+.book{min-width:0;min-height:760px;position:relative;padding:12px;border:2px solid #180d08;border-radius:29px;background:linear-gradient(135deg,#56331f,#2b180f 45%,#1b0f09);box-shadow:0 24px 54px rgba(0,0,0,.58),inset 0 0 0 3px #71472a,inset 0 0 0 9px #2b170e}
+.cover-layer{position:absolute;inset:6px;border:2px solid rgba(201,139,71,.26);border-radius:22px;pointer-events:none}
+.page-block{min-height:732px;position:relative;overflow:hidden;border-radius:18px;background:#dfc38d;box-shadow:inset 0 10px 20px rgba(255,255,255,.07),inset 0 -9px 15px rgba(77,45,20,.09)}
+.paper{position:absolute;top:0;bottom:0;width:50%}
+.paper-left{
+  left:0;background:
+    radial-gradient(circle at 38% 4%,rgba(255,255,255,.42),transparent 29%),
+    radial-gradient(circle at 10% 82%,rgba(119,79,38,.10),transparent 21%),
+    repeating-linear-gradient(0deg,rgba(88,57,28,.026) 0 1px,transparent 1px 4px),
+    linear-gradient(90deg,#c39f6a,#ead0a0 7%,#f2dfb8 89%,#caaa75)
+}
+.paper-right{
+  right:0;background:
+    radial-gradient(circle at 62% 4%,rgba(255,255,255,.38),transparent 29%),
+    radial-gradient(circle at 90% 82%,rgba(119,79,38,.09),transparent 21%),
+    repeating-linear-gradient(0deg,rgba(88,57,28,.026) 0 1px,transparent 1px 4px),
+    linear-gradient(90deg,#c6a472,#eed9af 10%,#ecd19e 90%,#bf9662)
+}
+.paper:after{content:"";position:absolute;inset:0;background:
+  radial-gradient(circle at 18% 20%,rgba(93,54,24,.035) 0 1px,transparent 1.5px),
+  radial-gradient(circle at 73% 64%,rgba(93,54,24,.035) 0 1px,transparent 1.5px);
+  background-size:29px 33px,37px 41px;mix-blend-mode:multiply}
+.center-fold{position:absolute;left:50%;top:0;bottom:0;width:28px;transform:translateX(-50%);z-index:2;background:linear-gradient(90deg,rgba(61,35,17,.28),rgba(255,255,255,.1) 42%,rgba(255,255,255,.035) 52%,rgba(57,32,16,.3));box-shadow:0 0 19px rgba(42,23,11,.22)}
+.book-ui{position:relative;z-index:3;padding:29px 36px 48px}
+.corner{position:absolute;width:28px;height:28px;z-index:5}
+.c1{left:8px;top:8px;border-left:3px solid #b77a3d;border-top:3px solid #b77a3d;border-radius:12px 0 0}
+.c2{right:8px;top:8px;border-right:3px solid #b77a3d;border-top:3px solid #b77a3d;border-radius:0 12px 0 0}
+.c3{left:8px;bottom:8px;border-left:3px solid #b77a3d;border-bottom:3px solid #b77a3d;border-radius:0 0 0 12px}
+.c4{right:8px;bottom:8px;border-right:3px solid #b77a3d;border-bottom:3px solid #b77a3d;border-radius:0 0 12px}
+.page-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;border-bottom:1px solid var(--line);padding-bottom:12px;margin-bottom:17px}
+.eyebrow{font-size:9px;text-transform:uppercase;letter-spacing:.15em;color:#84633f;font-weight:bold}.page-heading h2{font-size:31px;font-weight:normal;margin:3px 0 0}.page-actions{display:flex;gap:7px;flex-wrap:wrap}
+
+/* Right side desk objects */
+.right-desk{padding-top:22px}
+.receipt-object{position:relative;margin:0 7px 28px}
+.scroll-roller{height:28px;background:linear-gradient(#c28d53,#89542d 46%,#67401f 56%,#a86d37);border:2px solid #4f2b17;border-radius:14px;box-shadow:0 6px 14px rgba(0,0,0,.38),inset 0 1px rgba(255,255,255,.14);position:relative;z-index:3}
+.scroll-roller:before,.scroll-roller:after{content:"";position:absolute;top:4px;width:15px;height:14px;border-radius:4px;background:#472616;border:1px solid #2a150b}
+.scroll-roller:before{left:-9px}.scroll-roller:after{right:-9px}
+.receipt-scroll{
+  min-height:510px;margin:-4px 15px;padding:31px 18px 43px;
+  background:
+    radial-gradient(circle at 46% 8%,rgba(255,255,255,.24),transparent 24%),
+    repeating-linear-gradient(0deg,rgba(86,53,26,.025) 0 1px,transparent 1px 4px),
+    linear-gradient(90deg,#c18b52,#edcd99 12%,#f0d6a6 88%,#bc844c);
+  border-left:1px solid #764f2b;border-right:1px solid #764f2b;box-shadow:0 9px 25px rgba(0,0,0,.32);
+  clip-path:polygon(2% 0,98% 0,100% 4%,98% 8%,100% 12%,98% 16%,100% 20%,98% 24%,100% 28%,98% 32%,100% 36%,98% 40%,100% 44%,98% 48%,100% 52%,98% 56%,100% 60%,98% 64%,100% 68%,98% 72%,100% 76%,98% 80%,100% 84%,98% 88%,100% 92%,98% 96%,99% 100%,1% 100%,2% 96%,0 92%,2% 88%,0 84%,2% 80%,0 76%,2% 72%,0 68%,2% 64%,0 60%,2% 56%,0 52%,2% 48%,0 44%,2% 40%,0 36%,2% 32%,0 28%,2% 24%,0 20%,2% 16%,0 12%,2% 8%,0 4%)
+}
+.scroll-brand{text-align:center;font-size:9px;text-transform:uppercase;letter-spacing:.16em;color:#74573a}.receipt-scroll h3{text-align:center;font-size:25px;font-weight:normal;margin:5px 0 19px}.receipt-idle{text-align:center;font-size:11px;font-style:italic;color:#756048;line-height:1.45}
+.wax{position:absolute;right:18px;bottom:-12px;width:56px;height:56px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 35% 30%,#a94e3f,#71281f 68%,#4a1713);color:#ddb39a;border:2px solid #591e17;box-shadow:0 7px 12px rgba(0,0,0,.4),inset 0 0 0 4px rgba(255,255,255,.04);font-weight:bold;transform:rotate(-8deg)}
+.mini-ledger{margin:0 10px;border:6px solid #2f1a10;border-radius:9px;background:
+  repeating-linear-gradient(0deg,rgba(87,55,28,.025) 0 1px,transparent 1px 4px),linear-gradient(#e4c88f,#c59e6a);box-shadow:0 12px 25px rgba(0,0,0,.37),inset 0 0 0 2px #684026;padding:12px}
+.mini-ledger header{display:flex;justify-content:space-between;border-bottom:1px solid var(--line);padding-bottom:7px}.mini-ledger header button{border:0;background:transparent;color:#714925;text-decoration:underline;font-size:11px}
+.note-preview{padding:10px 0;border-bottom:1px solid rgba(85,54,28,.18)}.note-preview strong{font-size:11px}.note-preview time{display:block;font-size:8px;text-transform:uppercase;letter-spacing:.1em;color:#7d6040;margin:2px 0 4px}.note-preview p{margin:0;font-size:10px;line-height:1.4;color:#5d4832}
+
+/* Application content looks inked into the book */
+#app{min-width:0}
+.grid{display:grid;gap:11px}.g2{grid-template-columns:repeat(2,minmax(0,1fr))}.g3{grid-template-columns:repeat(3,minmax(0,1fr))}.g4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.card,.scroll-card,.business-card{position:relative;background:rgba(244,224,184,.28);border:1px solid rgba(98,64,32,.25);padding:13px;box-shadow:inset 0 0 0 2px rgba(255,255,255,.035)}
+.card:before,.scroll-card:before{content:"";position:absolute;inset:3px;border:1px solid rgba(104,68,35,.045);pointer-events:none}
+.card h3,.scroll-card h3{margin:0 0 9px;padding-bottom:7px;border-bottom:1px solid rgba(88,57,29,.18);font-size:15px;font-weight:normal}
+.stat{min-height:86px;background:rgba(244,225,188,.2)}.stat .label{font-size:8px;text-transform:uppercase;letter-spacing:.12em;color:#725536}.stat .value{font-size:23px;margin-top:10px}.stat .sub{font-size:10px;color:#715d45;margin-top:4px}.stat .sigil{position:absolute;right:11px;top:9px;color:#936b38}
+.business-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.business-card h3{font-size:16px;margin:3px 0 8px}.business-card p{font-size:11px;color:#68543c;line-height:1.45}
+.quick,.toolbar{display:flex;gap:7px;flex-wrap:wrap}
+.btn{border:1px solid #734e32;background:linear-gradient(#5a3420,#351f14);color:#efdaae;padding:7px 10px;border-radius:2px}.btn:hover{background:linear-gradient(#714126,#442618)}.btn.secondary{background:linear-gradient(#d4b275,#b98950);color:#352315}.btn.ghost{background:rgba(243,221,181,.22);color:#5b4024;border-color:#89653e}.btn.danger{background:#71332b}.btn.success{background:#496246}
+.input,.select,.textarea{width:100%;border:1px solid #936d45;background:rgba(247,230,196,.69);padding:8px 9px;color:#2b2017;outline:none}.textarea{min-height:105px;resize:vertical}.search{flex:1;min-width:190px}
+.field label{display:block;margin-bottom:4px;font-size:8px;text-transform:uppercase;letter-spacing:.09em;color:#6e5235}.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.span2{grid-column:span 2}
+.table-wrap{overflow:auto;border:1px solid rgba(97,64,33,.22)}table{width:100%;border-collapse:collapse;background:rgba(243,225,189,.19);font-size:11px}th{text-align:left;font-size:8px;text-transform:uppercase;letter-spacing:.09em;color:#6a4e32;background:rgba(104,69,37,.06)}th,td{padding:8px;border-bottom:1px solid rgba(88,57,29,.16);white-space:nowrap}
+.badge{display:inline-block;border:1px solid #906e46;border-radius:999px;padding:2px 6px;font-size:8px;background:#e2c795;color:#5d442c}.badge.green{background:#d5dfce;border-color:#6e8069;color:#486044}.badge.red{background:#e9cec7;border-color:#966159;color:#78342d}.badge.blue{background:#d3dfe4;border-color:#6f8189;color:#506773}
+.notice{border-left:3px solid #8f6e41;background:rgba(215,186,135,.3);padding:8px 10px;font-size:10px;color:#5a4631}
+.register-grid{display:grid;grid-template-columns:minmax(0,1.13fr) minmax(295px,.87fr);gap:10px}.item-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.item{border:1px solid #8f6c43;background:rgba(244,224,187,.3);padding:8px;text-align:left}.item strong,.item small{display:block}.item small{font-size:9px;color:#725d46;margin-top:2px}.item .price{font-size:11px;font-weight:bold;color:#594023;margin-top:5px}
+.cart-row{display:grid;grid-template-columns:1fr auto;gap:7px;padding:8px 0;border-bottom:1px solid rgba(88,57,29,.16)}.cart-row small{display:block;font-size:9px;color:#725d46}.qty-controls{display:flex;gap:5px;align-items:center}.qty{width:23px;height:23px;border:1px solid #89643c;background:#d5b881}
+.permission-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}.perm{display:flex;gap:6px;align-items:center;font-size:10px;background:rgba(220,195,150,.25);padding:6px;border:1px solid rgba(99,68,37,.13)}
+.assignment-block{border:1px solid rgba(99,68,37,.19);padding:9px;background:rgba(239,216,178,.24)}.assignment-head{display:flex;justify-content:space-between;gap:8px;margin-bottom:7px}
+.receipt{display:none!important}
+.receipt-scroll .merchant{text-align:center;font-size:9px;color:#70543a;margin-bottom:12px}.receipt-scroll .receipt-line,.receipt-scroll .receipt-total{display:flex;justify-content:space-between;gap:7px;padding:5px 0}.receipt-scroll .receipt-line{font-size:10px;border-bottom:1px dotted rgba(78,51,26,.33)}.receipt-scroll .receipt-total{font-size:16px;border-top:2px double #72502d;margin-top:8px;padding-top:9px}.receipt-scroll .receipt-section{margin-top:9px;padding-top:7px;border-top:1px dotted rgba(78,51,26,.33)}.receipt-scroll .receipt-section>strong{display:block;font-size:8px;text-transform:uppercase;letter-spacing:.1em;margin-bottom:3px}.receipt-scroll .role-line{display:flex;justify-content:space-between;font-size:9px;padding:2px 0}
+.modal-backdrop{position:fixed;inset:0;background:rgba(20,10,5,.72);display:grid;place-items:center;z-index:90;padding:16px}.modal{width:min(700px,100%);max-height:90vh;overflow:auto;background:
+  repeating-linear-gradient(0deg,rgba(88,57,29,.025) 0 1px,transparent 1px 4px),linear-gradient(#ebd2a3,#cdaa73);border:3px solid #5d361f;box-shadow:0 23px 68px rgba(0,0,0,.52);padding:18px}.modal h3{margin-top:0}.modal-actions{display:flex;justify-content:flex-end;gap:7px;margin-top:15px}
+.empty{text-align:center;padding:22px;color:#725c44;font-size:10px}
+.backdrop{display:none}
+.desk-actions{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:12px}.desk-actions button{min-width:120px;border:1px solid #754b2e;border-radius:3px;background:linear-gradient(#4b2f1e,#27160e);color:#e7cf9f;padding:8px 14px;box-shadow:0 5px 10px rgba(0,0,0,.28),inset 0 1px rgba(255,255,255,.035)}
+@media(max-width:1500px){.top-plaque{grid-template-columns:minmax(400px,1.4fr) 260px 310px}.user-strip{display:none}.desk-workspace{grid-template-columns:178px minmax(0,1fr) 270px}.book-ui{padding:25px 28px 42px}.g4{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:1180px){.top-plaque{grid-template-columns:1fr 260px}.coffer-strip{display:none}.desk-workspace{grid-template-columns:170px minmax(0,1fr)}.right-desk{display:none}}
+@media(max-width:800px){
+  .scene{padding:0}.top-plaque{grid-template-columns:1fr;padding:8px;margin:0}.title-scroll{padding-left:52px}.title-scroll h1{font-size:18px}.current-business{display:none}
+  .desk-workspace{display:block;padding:8px}.bookmark-stack{position:fixed;left:0;top:0;bottom:0;width:230px;padding:22px 10px;background:#27150d;z-index:80;transform:translateX(-104%);transition:.2s}.bookmark-stack.open{transform:translateX(0)}
+  .book{min-height:640px}.page-block{min-height:616px}.book-ui{padding:19px 14px 28px}.paper-left{width:100%}.paper-right,.center-fold{display:none}.g4,.g3,.g2,.business-grid,.register-grid,.form-grid{grid-template-columns:1fr}.span2{grid-column:span 1}.item-grid{grid-template-columns:1fr}
+}
+
+</style>
+</head>
+<body>
+  <div class="scene">
+    <div class="candle-glow"></div>
+    <div class="desk-object coins"></div>
+    <div class="desk-object quill"></div>
+
+    <header class="top-plaque">
+      <section class="title-scroll">
+        <div class="round-seal">GS</div>
+        <div>
+          <span class="kicker">Merchant Ledger</span>
+          <h1>Golden Sands Trading Company</h1>
+          <p>Honest trade across Skyrim</p>
+        </div>
+      </section>
+
+      <section class="current-business">
+        <span>Current Business</span>
+        <select id="businessSelect"></select>
+        <small id="businessLocation"></small>
+      </section>
+
+      <section class="coffer-strip">
+        <div><span>Company Coffers</span><strong id="companyCoffersDisplay">0 septims</strong></div>
+        <div><span>Business Coffers</span><strong id="businessCoffersDisplay">0 septims</strong></div>
+      </section>
+
+      <section class="user-strip">
+        <strong>Ko'vash</strong>
+        <small>Company Owner</small>
+      </section>
+    </header>
+
+    <div class="desk-workspace">
+      <aside id="sidebar" class="bookmark-stack">
+        <div class="bookmark-title">Ledger Sections</div>
+        <nav id="nav"></nav>
+      </aside>
+
+      <main class="book">
+        <div class="cover-layer"></div>
+        <div class="page-block">
+          <div class="paper paper-left"></div>
+          <div class="paper paper-right"></div>
+          <div class="center-fold"></div>
+
+          <div class="book-ui">
+            <div class="page-heading">
+              <div>
+                <span id="eyebrow" class="eyebrow">Company Overview</span>
+                <h2 id="pageTitle">Dashboard</h2>
+              </div>
+              <div id="pageActions" class="page-actions"></div>
+            </div>
+
+            <section id="app"></section>
+          </div>
+        </div>
+        <span class="corner c1"></span>
+        <span class="corner c2"></span>
+        <span class="corner c3"></span>
+        <span class="corner c4"></span>
+      </main>
+
+      <aside class="right-desk">
+        <section class="receipt-object">
+          <div class="scroll-roller roller-top"></div>
+          <div id="globalReceiptScroll" class="receipt-scroll">
+            <div class="scroll-brand">Golden Sands</div>
+            <h3>Receipt</h3>
+            <div class="receipt-idle">The next sale will be written here.</div>
+          </div>
+          <div class="scroll-roller roller-bottom"></div>
+          <div class="wax">GS</div>
+        </section>
+
+        <section class="mini-ledger">
+          <header>
+            <span>Caravan Notebook</span>
+            <button onclick="go('notebook')">Open</button>
+          </header>
+          <div id="notebookPreview"></div>
+        </section>
+      </aside>
+    </div>
+
+    <footer class="desk-actions">
+      <button onclick="go('register')">✦ Register</button>
+      <button onclick="go('inventory')">▦ Inventory</button>
+      <button onclick="go('transfers')">⇄ Transfers</button>
+      <button onclick="go('employees')">♟ Employees</button>
+      <button onclick="go('history')">≡ Receipts</button>
+    </footer>
+  </div>
+
+  <div id="backdrop" class="backdrop"></div>
+  <div id="modalRoot"></div>
+  <script>
+const seed={
+ activeBusinessId:'caravan',company:{name:'Golden Sands Trading Company',owner:"Ko'vash",caravanCut:20},
+ businesses:[
+  {id:'caravan',name:'Golden Sands Caravan',type:'Caravan',hold:'The Pale',location:'Dawnstar market camp',description:'Primary travelling caravan and trade hub.',status:'Active',coffers:12450},
+  {id:'farm',name:'Golden Sands Farm',type:'Farm',hold:'The Pale',location:'Outside Dawnstar',description:'Company farm supplying produce and ingredients.',status:'Active',coffers:3820},
+  {id:'inn',name:'Future Golden Sands Inn',type:'Inn',hold:'Unassigned',location:'Unassigned',description:'Future hospitality business.',status:'Inactive',coffers:0}
+ ],
+ employees:[
+  {id:1,name:"Ko'vash",email:'owner@example.com',role:'Company Owner',earnings:0,assignments:{caravan:{enabled:true,permissions:['all']},farm:{enabled:true,permissions:['all']},inn:{enabled:true,permissions:['all']}}},
+  {id:2,name:"Ra'zirr",email:'razirr@example.com',role:'Merchant',earnings:3250,assignments:{caravan:{enabled:true,permissions:['register','inventory_view','orders','notebook','tasks']},farm:{enabled:false,permissions:[]},inn:{enabled:false,permissions:[]}}},
+  {id:3,name:"M'aiqra",email:'maiqra@example.com',role:'Caravan Hand',earnings:1480,assignments:{caravan:{enabled:true,permissions:['inventory_view','transfers','notebook','tasks']},farm:{enabled:true,permissions:['inventory_view','inventory_edit','transfers','tasks']},inn:{enabled:false,permissions:[]}}}
+ ],
+ inventory:[
+  {id:1,businessId:'caravan',name:'Moon Monk Robes',category:'Apparel',condition:'Exquisite',qty:4,price:1650,batches:[{batchId:'b1',qty:4,contributorId:2,source:'Stock Intake'}]},
+  {id:2,businessId:'caravan',name:'Khajiit Merchant Robes',category:'Apparel',condition:'Fine',qty:7,price:900,batches:[{batchId:'b2',qty:5,contributorId:1,source:'Stock Intake'},{batchId:'b3',qty:2,contributorId:3,source:'Transfer from Farm'}]},
+  {id:3,businessId:'caravan',name:'Moon Sugar',category:'Ingredient',condition:'Standard',qty:23,price:95,batches:[{batchId:'b4',qty:15,contributorId:2,source:'Stock Intake'},{batchId:'b5',qty:8,contributorId:3,source:'Stock Intake'}]},
+  {id:4,businessId:'farm',name:'Potato',category:'Produce',condition:'Fresh',qty:48,price:12,batches:[{batchId:'b6',qty:48,contributorId:3,source:'Harvest / Intake'}]}
+ ],
+ notes:[{id:1,author:"Ra'zirr",date:'16th of Last Seed',businessId:'caravan',text:'A hunter near Whiterun claims he will have ten wolf pelts tomorrow.',pinned:true}],
+ history:[],transfers:[]
+};
+let state=JSON.parse(localStorage.getItem('gsl-phase4')||'null')||structuredClone(seed);(state.inventory||[]).forEach(item=>(item.batches||[]).forEach(batch=>{const legacy=[batch.contributorId,batch.transferById].filter(Boolean);batch.participantIds=[...new Set([...(batch.participantIds||[]),...legacy])];if(!batch.contributorId&&batch.participantIds.length)batch.contributorId=batch.participantIds[0]}));let cart=[],currentView='company';
+const $=s=>document.querySelector(s),app=$('#app');
+const permissionLabels={register:'Use Register',inventory_view:'View Inventory',inventory_edit:'Edit Inventory',orders:'Create / Complete Orders',transfers:'Transfer Stock',suppliers:'Manage Suppliers',notebook:'Use Notebook',tasks:'Use Tasks',coffers:'View Coffers',coffers_edit:'Modify Coffers',employees:'Manage Employees',permissions:'Change Permissions'};
+const navGroups=[['Company',[['company','◈','Company Overview'],['businesses','⌂','Businesses']]],['Current Business',[['dashboard','⌂','Dashboard'],['register','✦','Register'],['inventory','▦','Inventory'],['transfers','⇄','Transfers']]],['Caravan',[['notebook','✎','Notebook'],['employees','♟','Employees']]],['Accounting',[['coffers','◈','Coffers'],['history','≡','Sales History'],['earnings','¤','Employee Earnings']]],['Administration',[['permissions','⚙','Permissions'],['settings','☼','Settings']]]];
+function syncDeskHeader(){
+  const total=(state.businesses||[]).reduce((a,b)=>a+(Number(b.coffers)||0),0);
+  const active=activeBusiness();
+  const c=document.getElementById('companyCoffersDisplay');
+  const d=document.getElementById('businessCoffersDisplay');
+  if(c)c.textContent=money(total);
+  if(d)d.textContent=money(active?.coffers||0);
+}
+function save(){localStorage.setItem('gsl-phase4',JSON.stringify(state));syncDeskHeader()}function money(n){return Number(n||0).toLocaleString()+' septims'}function activeBusiness(){return state.businesses.find(b=>b.id===state.activeBusinessId)||state.businesses[0]}function inv(){return state.inventory.filter(i=>i.businessId===state.activeBusinessId)}function empName(id){return state.employees.find(e=>e.id===id)?.name||'Unknown'}function bizName(id){return state.businesses.find(b=>b.id===id)?.name||id}function eligibleEmployees(bid=state.activeBusinessId){return state.employees.filter(e=>e.assignments?.[bid]?.enabled)}function now(){return new Date().toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}
+function setHead(t,e){$('#pageTitle').textContent=t;$('#eyebrow').textContent=e||activeBusiness().name;$('#pageActions').innerHTML=''}function stat(l,v,s,i='◈'){return `<div class="card stat"><span class="sigil">${i}</span><div class="label">${l}</div><div class="value">${v}</div><div class="sub">${s}</div></div>`}function table(h,r){return `<div class="table-wrap"><table><thead><tr>${h.map(x=>`<th>${x}</th>`).join('')}</tr></thead><tbody>${r.join('')}</tbody></table></div>`}
+function buildNav(){$('#nav').innerHTML=navGroups.map(([g,items])=>`<div class="nav-group-title">${g}</div>${items.map(([v,i,l])=>`<button class="nav-item ${currentView===v?'active':''}" data-view="${v}"><span>${i}</span>${l}</button>`).join('')}`).join('');document.querySelectorAll('.nav-item').forEach(b=>b.onclick=()=>go(b.dataset.view))}
+function buildBusinessSelect(){const s=$('#businessSelect');const actives=state.businesses.filter(b=>b.status==='Active');if(!actives.some(b=>b.id===state.activeBusinessId)&&actives[0])state.activeBusinessId=actives[0].id;s.innerHTML=actives.map(b=>`<option value="${b.id}" ${b.id===state.activeBusinessId?'selected':''}>${b.name}</option>`).join('');$('#businessLocation').textContent=`${activeBusiness().hold} · ${activeBusiness().location}`;s.onchange=()=>{state.activeBusinessId=s.value;save();buildBusinessSelect();render();renderNotebookPreview()}}
+function renderNotebookPreview(){const ns=state.notes.filter(n=>n.businessId===state.activeBusinessId).slice(0,3);$('#notebookPreview').innerHTML=ns.length?ns.map(n=>`<div class="note-preview"><strong>${n.author}</strong><time>${n.date}</time><p>${n.text}</p></div>`).join(''):'<div class="empty">No notes.</div>'}
+function go(v){currentView=v;buildNav();render();closeNav()}window.go=go;function closeNav(){$('#sidebar').classList.remove('open');$('#backdrop').classList.remove('show')}const navToggle=document.getElementById('navToggle');
+if(navToggle)navToggle.onclick=()=>{$('#sidebar').classList.toggle('open');$('#backdrop').classList.toggle('show')};$('#backdrop').onclick=closeNav;
+function render(){({company,businesses,dashboard,register,inventory,transfers,notebook,employees,coffers,history,earnings,permissions,settings}[currentView])();renderNotebookPreview()}
+function company(){setHead('Company Overview','Golden Sands Trading Company');app.innerHTML=`<div class="grid g4">${stat('Company Coffers',money(state.businesses.reduce((a,b)=>a+b.coffers,0)),'Across all businesses')}${stat('Active Businesses',state.businesses.filter(b=>b.status==='Active').length,'Currently operating','⌂')}${stat('Employees',state.employees.length,'Company members','♟')}${stat('Inventory Units',state.inventory.reduce((a,b)=>a+b.qty,0),'Across all businesses','▦')}</div>`}
+function businesses(){setHead('Businesses','Company Structure');$('#pageActions').innerHTML='<button class="btn" onclick="addBusiness()">+ Add Business</button>';app.innerHTML=`<div class="business-grid">${state.businesses.map(b=>`<div class="business-card"><span class="eyebrow">${b.type}</span><h3>${b.name}</h3><p><strong>Status:</strong> ${b.status}<br><strong>Hold:</strong> ${b.hold}<br><strong>Location:</strong> ${b.location}<br>${b.description}</p><div class="quick"><button class="btn secondary" onclick="switchBusiness('${b.id}')">Open</button><button class="btn ghost" onclick="editBusiness('${b.id}')">Edit</button></div></div>`).join('')}</div>`}
+window.switchBusiness=id=>{state.activeBusinessId=id;save();buildBusinessSelect();go('dashboard')};window.addBusiness=()=>businessModal(null);window.editBusiness=id=>businessModal(state.businesses.find(b=>b.id===id));
+function businessModal(b){modal(b?'Edit Business':'Add Business',`<div class="form-grid"><div class="field span2"><label>Name</label><input id="bName" class="input" value="${b?.name||''}"></div><div class="field"><label>Type</label><input id="bType" class="input" value="${b?.type||'Shop'}"></div><div class="field"><label>Status</label><select id="bStatus" class="select"><option ${b?.status==='Active'?'selected':''}>Active</option><option ${b?.status==='Inactive'?'selected':''}>Inactive</option></select></div><div class="field"><label>Hold</label><input id="bHold" class="input" value="${b?.hold||''}"></div><div class="field"><label>Location</label><input id="bLoc" class="input" value="${b?.location||''}"></div><div class="field span2"><label>Description</label><textarea id="bDesc" class="textarea">${b?.description||''}</textarea></div></div>`,()=>{const name=$('#bName').value.trim();if(!name)return;if(b){Object.assign(b,{name,type:$('#bType').value||'Shop',status:$('#bStatus').value,hold:$('#bHold').value||'Unassigned',location:$('#bLoc').value||'Unassigned',description:$('#bDesc').value||''})}else{const id='biz'+Date.now();state.businesses.push({id,name,type:$('#bType').value||'Shop',status:$('#bStatus').value,hold:$('#bHold').value||'Unassigned',location:$('#bLoc').value||'Unassigned',description:$('#bDesc').value||'',coffers:0});state.employees.forEach(e=>e.assignments[id]={enabled:false,permissions:[]})}save();closeModal();buildBusinessSelect();render()})}
+function dashboard(){setHead('Dashboard',activeBusiness().name);app.innerHTML=`<div class="grid g4">${stat('Coffers',money(activeBusiness().coffers),'Business balance')}${stat('Stock Units',inv().reduce((a,b)=>a+b.qty,0),inv().length+' item entries','▦')}${stat('Assigned Employees',eligibleEmployees().length,'Can work here','♟')}${stat('Stock Contributors',new Set(inv().flatMap(i=>i.batches.map(b=>b.contributorId))).size,'Represented in stock','✦')}</div>`}
+function register(){setHead('Register','Point of Sale · '+activeBusiness().name);app.innerHTML=`<div class="register-grid"><div class="card"><div class="toolbar"><input id="itemSearch" class="input search" placeholder="Search wares…"></div><div id="itemGrid" class="item-grid"></div></div><div><div class="card"><h3>Current Sale</h3><div id="cart"></div></div><div id="receiptPreview" class="receipt" style="margin-top:12px"></div></div></div>`;$('#itemSearch').oninput=drawItems;drawItems();drawCart()}
+function drawItems(){const q=($('#itemSearch')?.value||'').toLowerCase();const items=inv().filter(i=>i.qty>0&&(i.name+' '+i.condition).toLowerCase().includes(q));$('#itemGrid').innerHTML=items.map(i=>`<button class="item" onclick="addCart(${i.id})"><strong>${i.name}</strong><small>${i.category} · ${i.condition} · ${i.qty} available</small><div class="price">${money(i.price)}</div></button>`).join('')||'<div class="empty">No wares.</div>'}
+window.addCart=id=>{const i=state.inventory.find(x=>x.id===id),c=cart.find(x=>x.id===id);if(c){if(c.qty<i.qty)c.qty++}else cart.push({id:i.id,name:i.name,price:i.price,qty:1});drawCart()};window.cartQty=(id,d)=>{const c=cart.find(x=>x.id===id),i=state.inventory.find(x=>x.id===id);c.qty=Math.max(0,Math.min(i.qty,c.qty+d));if(c.qty===0)cart=cart.filter(x=>x.id!==id);drawCart()};
+function previewContributors(){const map=new Map();for(const c of cart){const item=state.inventory.find(i=>i.id===c.id);let need=c.qty;for(const b of item.batches){if(need<=0)break;const used=Math.min(need,b.qty);if(used>0){const ids=[...new Set([...(b.participantIds||[]),b.contributorId].filter(Boolean))];ids.forEach(id=>map.set(id,(map.get(id)||0)+used));need-=used}}}return [...map.entries()].map(([id,units])=>({id,name:empName(id),units}))}
+function calcReceipt(){const subtotal=cart.reduce((a,b)=>a+b.price*b.qty,0),discount=Math.max(0,Math.min(100,Number($('#discount')?.value)||0)),sale=Math.round(subtotal*(1-discount/100)),cut=Math.round(sale*(state.company.caravanCut/100));return{subtotal,discount,sale,cut,pool:sale-cut}}
+function drawCart(){const el=$('#cart');if(!el)return;el.innerHTML=cart.length?cart.map(c=>`<div class="cart-row"><div><strong>${c.name}</strong><small>${money(c.price)} each</small></div><div class="qty-controls"><button class="qty" onclick="cartQty(${c.id},-1)">−</button><strong>${c.qty}</strong><button class="qty" onclick="cartQty(${c.id},1)">+</button></div></div>`).join(''):'<div class="empty">No items added.</div>';const es=eligibleEmployees();el.innerHTML+=`<div class="form-grid" style="margin-top:12px"><div class="field"><label>Discount %</label><input id="discount" class="input" type="number" min="0" max="100" value="0"></div><div class="field"><label>Seller / Cashier</label><select id="seller" class="select">${es.map(e=>`<option value="${e.id}">${e.name}</option>`).join('')}</select></div></div><div class="field" style="margin-top:10px"><label>Additional Participants</label><div class="permission-grid">${es.map(e=>`<label class="perm"><input class="extraPart" type="checkbox" value="${e.id}" onchange="drawReceipt()"> ${e.name}</label>`).join('')}</div></div><button class="btn" style="width:100%;margin-top:12px" onclick="completeSale()">Complete Sale</button>`;$('#discount').oninput=drawReceipt;$('#seller').onchange=drawReceipt;drawReceipt()}
+function drawReceipt(){const r=calcReceipt(),contributors=previewContributors(),sellerId=Number($('#seller')?.value||0),extras=[...document.querySelectorAll('.extraPart:checked')].map(x=>Number(x.value)),participants=[...new Set([sellerId,...contributors.map(c=>c.id),...extras].filter(Boolean))],share=participants.length?Math.floor(r.pool/participants.length):0;const receiptHtml=`<h3>${activeBusiness().name}</h3><div class="merchant">Golden Sands Trading Company</div>${cart.map(c=>`<div class="receipt-line"><span>${c.name} × ${c.qty}</span><span>${money(c.price*c.qty)}</span></div>`).join('')}<div class="receipt-line"><span>Sale Amount</span><strong>${money(r.sale)}</strong></div><div class="receipt-line"><span>Company Cut (${state.company.caravanCut}%)</span><strong>${money(r.cut)}</strong></div><div class="receipt-section"><strong>Seller</strong><div class="role-line"><span>${empName(sellerId)}</span><span>Seller</span></div></div><div class="receipt-section"><strong>Stock / Transfer Contributors</strong>${contributors.length?contributors.map(c=>`<div class="role-line"><span>${c.name}</span><span>${c.units} unit${c.units===1?'':'s'} linked</span></div>`).join(''):'<div class="role-line"><span>None detected</span><span>—</span></div>'}</div><div class="receipt-section"><strong>Additional Participants</strong>${extras.length?extras.map(id=>`<div class="role-line"><span>${empName(id)}</span><span>Added manually</span></div>`).join(''):'<div class="role-line"><span>None</span><span>—</span></div>'}</div><div class="receipt-section"><strong>Profit Split Preview</strong>${participants.map(id=>`<div class="role-line"><span>${empName(id)}</span><span>${money(share)}</span></div>`).join('')}</div><div class="receipt-total"><span>Customer Pays</span><strong>${money(r.sale)}</strong></div>`;
+const hidden=$('#receiptPreview');if(hidden)hidden.innerHTML=receiptHtml;
+const physical=$('#globalReceiptScroll');if(physical)physical.innerHTML='<div class="scroll-brand">Golden Sands</div>'+receiptHtml}
+function consumeBatches(item,qty){let need=qty,used=[];for(const b of item.batches){if(need<=0)break;const take=Math.min(need,b.qty);if(take>0){used.push({contributorId:b.contributorId,participantIds:[...new Set([...(b.participantIds||[]),b.contributorId].filter(Boolean))],qty:take,source:b.source});b.qty-=take;need-=take}}item.batches=item.batches.filter(b=>b.qty>0);item.qty-=qty;return used}
+window.completeSale=()=>{if(!cart.length)return alert('Add at least one item.');const r=calcReceipt(),sellerId=Number($('#seller').value),extras=[...document.querySelectorAll('.extraPart:checked')].map(x=>Number(x.value)),contribMap=new Map();cart.forEach(c=>{const item=state.inventory.find(i=>i.id===c.id),used=consumeBatches(item,c.qty);used.forEach(u=>u.participantIds.forEach(id=>contribMap.set(id,(contribMap.get(id)||0)+u.qty)))});const contributorIds=[...contribMap.keys()],participants=[...new Set([sellerId,...contributorIds,...extras])],share=participants.length?Math.floor(r.pool/participants.length):0;participants.forEach(id=>{const e=state.employees.find(x=>x.id===id);if(e)e.earnings+=share});activeBusiness().coffers+=r.cut;state.history.unshift({id:Date.now(),businessId:state.activeBusinessId,date:now(),who:empName(sellerId),detail:cart.map(c=>`${c.name} × ${c.qty}`).join(', '),amount:r.sale,companyCut:r.cut,participants:participants.map(id=>({id,name:empName(id),roles:[id===sellerId?'Seller':null,contributorIds.includes(id)?'Stock / Transfer Contributor':null,extras.includes(id)?'Additional':null].filter(Boolean)}))});save();cart=[];alert(`Sale recorded.
+Company cut: ${money(r.cut)}
+Each participant: ${money(share)}`);render()}
+function inventory(){setHead('Inventory',activeBusiness().name);$('#pageActions').innerHTML='<button class="btn" onclick="stockIntake()">+ Stock Intake</button><button class="btn ghost" onclick="addItem()">+ New Item</button>';app.innerHTML=`<div class="card">${table(['Item','Condition','Qty','Price','Stock Provenance'],inv().map(i=>`<tr><td><strong>${i.name}</strong></td><td>${i.condition}</td><td>${i.qty}</td><td>${money(i.price)}</td><td>${i.batches.map(b=>`${b.qty} · ${[...new Set([...(b.participantIds||[]),b.contributorId].filter(Boolean))].map(empName).join(' → ')}`).join(' · ')||'—'}</td></tr>`))}</div>`}
+window.addItem=()=>modal('Add New Item',`<div class="form-grid"><div class="field span2"><label>Item Name</label><input id="iName" class="input"></div><div class="field"><label>Category</label><input id="iCat" class="input"></div><div class="field"><label>Condition</label><input id="iCond" class="input" value="Standard"></div><div class="field"><label>Sale Price</label><input id="iPrice" type="number" class="input" value="0"></div></div>`,()=>{if(!$('#iName').value.trim())return;state.inventory.push({id:Date.now(),businessId:state.activeBusinessId,name:$('#iName').value.trim(),category:$('#iCat').value||'Misc',condition:$('#iCond').value||'Standard',qty:0,price:Number($('#iPrice').value)||0,batches:[]});save();closeModal();render()})
+window.stockIntake=()=>modal('Stock Intake',`<div class="form-grid"><div class="field span2"><label>Item</label><select id="siItem" class="select">${inv().map(i=>`<option value="${i.id}">${i.name} — ${i.condition}</option>`).join('')}</select></div><div class="field"><label>Quantity</label><input id="siQty" type="number" class="input" value="1"></div><div class="field"><label>Employee Adding Stock</label><select id="siEmp" class="select">${eligibleEmployees().map(e=>`<option value="${e.id}">${e.name}</option>`).join('')}</select></div><div class="field span2"><label>Source / Note</label><input id="siSource" class="input" value="Stock Intake"></div></div>`,()=>{const item=state.inventory.find(i=>i.id===Number($('#siItem').value)),qty=Math.max(1,Number($('#siQty').value)||1),eid=Number($('#siEmp').value);item.qty+=qty;item.batches.push({batchId:'b'+Date.now(),qty,contributorId:eid,participantIds:[eid],source:$('#siSource').value||'Stock Intake'});save();closeModal();render()})
+function transfers(){setHead('Transfers','Inter-Business Stock');$('#pageActions').innerHTML='<button class="btn" onclick="newTransfer()">+ Transfer Stock</button>';app.innerHTML=`<div class="card">${table(['Date','Item','Qty','From','To','By','Contributor Trace'],state.transfers.map(t=>`<tr><td>${t.date}</td><td>${t.item}</td><td>${t.qty}</td><td>${t.from}</td><td>${t.to}</td><td>${t.by}</td><td>${t.trace.map(x=>`${x.qty} · ${[...new Set([...(x.participantIds||[]),x.contributorId].filter(Boolean))].map(empName).join(' → ')}`).join(' · ')}</td></tr>`))}</div>`}
+window.newTransfer=()=>modal('Transfer Stock',`<div class="form-grid"><div class="field span2"><label>Item</label><select id="trItem" class="select">${inv().map(i=>`<option value="${i.id}">${i.name} (${i.qty})</option>`).join('')}</select></div><div class="field"><label>Quantity</label><input id="trQty" type="number" class="input" value="1"></div><div class="field"><label>Destination</label><select id="trDest" class="select">${state.businesses.filter(b=>b.id!==state.activeBusinessId&&b.status==='Active').map(b=>`<option value="${b.id}">${b.name}</option>`).join('')}</select></div><div class="field span2"><label>Employee Making Transfer</label><select id="trEmp" class="select">${eligibleEmployees().map(e=>`<option value="${e.id}">${e.name}</option>`).join('')}</select></div></div>`,()=>{const src=state.inventory.find(i=>i.id===Number($('#trItem').value)),qty=Math.max(1,Number($('#trQty').value)||1),dest=$('#trDest').value,eid=Number($('#trEmp').value);if(qty>src.qty)return alert('Not enough stock.');let need=qty,trace=[];for(const b of src.batches){if(need<=0)break;const take=Math.min(need,b.qty);if(take){trace.push({contributorId:b.contributorId,participantIds:[...new Set([...(b.participantIds||[]),b.contributorId,eid].filter(Boolean))],qty:take,source:b.source});b.qty-=take;need-=take}}src.batches=src.batches.filter(b=>b.qty>0);src.qty-=qty;let target=state.inventory.find(i=>i.businessId===dest&&i.name===src.name&&i.condition===src.condition);if(!target){target={...src,id:Date.now(),businessId:dest,qty:0,batches:[]};state.inventory.push(target)}target.qty+=qty;trace.forEach(t=>target.batches.push({batchId:'b'+Date.now()+Math.random(),qty:t.qty,contributorId:t.contributorId,participantIds:[...new Set(t.participantIds||[t.contributorId,eid])],source:`Transfer from ${activeBusiness().name} by ${empName(eid)}; original source: ${t.source}`}));state.transfers.unshift({id:Date.now(),date:now(),item:src.name,qty,from:activeBusiness().name,to:bizName(dest),by:empName(eid),trace});save();closeModal();render()})
+function notebook(){setHead('Caravan Notebook','In-Character Notices');$('#pageActions').innerHTML='<button class="btn" onclick="newNote()">+ Write Note</button>';app.innerHTML=`<div class="grid g2">${state.notes.filter(n=>n.businessId===state.activeBusinessId).map(n=>`<div class="scroll-card"><span class="eyebrow">${n.date}</span><h3>${n.author}</h3><p>${n.text}</p></div>`).join('')||'<div class="empty">No notes.</div>'}</div>`}window.newNote=()=>modal('Write Note','<div class="field"><label>Notice</label><textarea id="nText" class="textarea"></textarea></div>',()=>{if(!$('#nText').value.trim())return;state.notes.unshift({id:Date.now(),author:"Ko'vash",date:now(),businessId:state.activeBusinessId,text:$('#nText').value.trim(),pinned:false});save();closeModal();render()})
+function employees(){setHead('Employees','Company Staff');$('#pageActions').innerHTML='<button class="btn" onclick="addEmployee()">+ Employee</button>';app.innerHTML=`<div class="business-grid">${state.employees.map(e=>`<div class="business-card"><span class="eyebrow">${e.role}</span><h3>${e.name}</h3><p>${e.email}</p>${state.businesses.map(b=>`<div class="supplier-row"><span>${b.name}</span><strong>${e.assignments?.[b.id]?.enabled?'Allowed':'No Access'}</strong></div>`).join('')}<div class="quick" style="margin-top:10px"><button class="btn ghost" onclick="editEmployee(${e.id})">Edit Access</button></div></div>`).join('')}</div>`}
+window.addEmployee=()=>modal('Add Employee','<div class="form-grid"><div class="field"><label>Name</label><input id="eName" class="input"></div><div class="field"><label>Google Email</label><input id="eEmail" class="input"></div><div class="field span2"><label>Role</label><input id="eRole" class="input" value="Merchant"></div></div>',()=>{if(!$('#eName').value.trim()||!$('#eEmail').value.trim())return;const assignments={};state.businesses.forEach(b=>assignments[b.id]={enabled:false,permissions:[]});state.employees.push({id:Date.now(),name:$('#eName').value.trim(),email:$('#eEmail').value.trim(),role:$('#eRole').value||'Merchant',earnings:0,assignments});save();closeModal();render()})
+window.editEmployee=id=>{const e=state.employees.find(x=>x.id===id);modal('Edit Employee Business Access',`<div class="grid g2">${state.businesses.map(b=>`<div class="assignment-block"><div class="assignment-head"><strong>${b.name}</strong><label><input class="bizEnabled" data-biz="${b.id}" type="checkbox" ${e.assignments?.[b.id]?.enabled?'checked':''}> Can Work Here</label></div><div class="permission-grid">${Object.entries(permissionLabels).map(([k,l])=>`<label class="perm"><input class="bizPerm" data-biz="${b.id}" data-perm="${k}" type="checkbox" ${e.assignments?.[b.id]?.permissions?.includes(k)||e.assignments?.[b.id]?.permissions?.includes('all')?'checked':''}> ${l}</label>`).join('')}</div></div>`).join('')}</div>`,()=>{state.businesses.forEach(b=>{const enabled=document.querySelector(`.bizEnabled[data-biz="${b.id}"]`).checked;const ps=[...document.querySelectorAll(`.bizPerm[data-biz="${b.id}"]:checked`)].map(x=>x.dataset.perm);e.assignments[b.id]={enabled,permissions:ps}});save();closeModal();render()})}
+function coffers(){setHead('Coffers',activeBusiness().name);app.innerHTML=`<div class="grid g3">${stat('Current Balance',money(activeBusiness().coffers),'Business funds')}${stat('Company Cut',state.company.caravanCut+'%','Default sale cut','%')}${stat('Company Total',money(state.businesses.reduce((a,b)=>a+b.coffers,0)),'All businesses','¤')}</div>`}function history(){setHead('Sales History','Audit Ledger');app.innerHTML=`<div class="card">${table(['Date','Seller','Items','Sale','Company Cut','Participants'],state.history.filter(h=>h.businessId===state.activeBusinessId).map(h=>`<tr><td>${h.date}</td><td>${h.who}</td><td>${h.detail}</td><td>${money(h.amount)}</td><td>${money(h.companyCut)}</td><td>${h.participants?.map(p=>`${p.name} (${p.roles.join('/')})`).join(' · ')||'—'}</td></tr>`))}</div>`}function earnings(){setHead('Employee Earnings','Profit Distribution');app.innerHTML=`<div class="business-grid">${state.employees.map(e=>`<div class="business-card"><span class="eyebrow">${e.role}</span><h3>${e.name}</h3><div class="stat" style="min-height:0"><div class="value">${money(e.earnings)}</div><div class="sub">Recorded earnings</div></div></div>`).join('')}</div>`}function permissions(){setHead('Permissions','Business-Scoped Access');app.innerHTML='<div class="notice">Permissions are now stored per employee per business. Use Employees → Edit Access to decide where each employee can work and what they can do there.</div>'}function settings(){setHead('Settings','Company Configuration');app.innerHTML=`<div class="card"><h3>Profit Rules</h3><div class="field"><label>Default Company Cut %</label><input id="setCut" class="input" type="number" min="0" max="100" value="${state.company.caravanCut}"></div><button class="btn" style="margin-top:10px" onclick="saveCut()">Save</button></div>`}window.saveCut=()=>{state.company.caravanCut=Math.max(0,Math.min(100,Number($('#setCut').value)||0));save();render()}
+function modal(title,body,onSave){$('#modalRoot').innerHTML=`<div class="modal-backdrop" onclick="if(event.target===this)closeModal()"><div class="modal"><h3>${title}</h3>${body}<div class="modal-actions"><button class="btn ghost" onclick="closeModal()">Cancel</button><button id="modalSave" class="btn">Save</button></div></div></div>`;$('#modalSave').onclick=onSave}window.closeModal=()=>$('#modalRoot').innerHTML='';
+save();buildNav();buildBusinessSelect();renderNotebookPreview();render();syncDeskHeader();
+
+</script>
+</body>
+</html>
