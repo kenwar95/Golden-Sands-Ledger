@@ -1,17 +1,16 @@
-# Golden Sands Trading Ledger — Phase 6.1
+# Golden Sands Trading Ledger — Phase 6.2
 
-Visual polish pass on Phase 6.
+This build is specifically designed to bypass stale CSS caching.
 
-Changes focus only on matching the approved concept more closely:
-- wider/flatter open ledger
-- stronger leather cover perimeter
-- aged parchment texture
-- more natural bookmark tabs
-- longer/narrower torn-edge receipt scroll
-- larger wax seal
-- more physical notebook appearance
-- softer ledger cards so the interface feels less like a modern dashboard
+## Upload these files to the repository root
+- index.html
+- app.js
+- medieval-v2.css
 
-All Phase 6 functionality is unchanged.
+## Important
+You can leave the old `styles.css` in the repository. Phase 6.2 no longer loads it.
 
-Upload `index.html`, `styles.css`, and `app.js` to the root of the existing GitHub Pages repository.
+The HTML now loads:
+`medieval-v2.css?v=62`
+
+That new filename plus query string forces GitHub Pages and the browser to fetch the new medieval stylesheet.
