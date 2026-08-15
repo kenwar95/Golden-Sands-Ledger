@@ -1,14 +1,14 @@
-# Golden Sands Trading Ledger — Phase 5.2
+# Golden Sands Trading Ledger — Phase 6
 
-This build uses the complete working Phase 4.1 project as its foundation and appends the medieval visual layer afterward.
+Phase 6 is a structural visual rebuild, not a skin of the old dashboard.
 
-## Important
-This fixes the earlier Phase 5 / 5.1 issue where the base stylesheet was missing.
+It preserves the working Phase 4.1 logic while replacing the outer interface with:
+- a wooden merchant table background
+- parchment title plaques
+- leather bookmark navigation
+- a real open-book application shell with center gutter
+- a separate physical receipt scroll with wax seal
+- a parchment notebook card
+- medieval desk controls
 
-## Upload
-Replace these files in the repository root:
-- index.html
-- styles.css
-- app.js
-
-The new `styles.css` should be much larger than the broken 117-line version.
+Upload `index.html`, `styles.css`, and `app.js` to the root of the existing GitHub Pages repository.
