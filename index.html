@@ -5,59 +5,55 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Golden Sands Trading Company</title>
   <meta name="theme-color" content="#24150d">
-  <link rel="stylesheet" href="medieval-v2.css?v=62">
+  <link rel="stylesheet" href="ledger-book.css?v=70">
 </head>
 <body>
-  <div class="desk-scene">
-    <header class="desk-header">
-      <button id="navToggle" class="mobile-menu" aria-label="Open ledger tabs">☰</button>
+  <div class="scene">
+    <div class="candle-glow"></div>
+    <div class="desk-object coins"></div>
+    <div class="desk-object quill"></div>
 
-      <section class="parchment-plaque company-plaque">
+    <header class="top-plaque">
+      <section class="title-scroll">
         <div class="round-seal">GS</div>
         <div>
-          <span class="tiny-title">Merchant Ledger</span>
+          <span class="kicker">Merchant Ledger</span>
           <h1>Golden Sands Trading Company</h1>
           <p>Honest trade across Skyrim</p>
         </div>
       </section>
 
-      <section class="leather-plaque active-business-plaque">
+      <section class="current-business">
         <span>Current Business</span>
         <select id="businessSelect"></select>
         <small id="businessLocation"></small>
       </section>
 
-      <section class="parchment-plaque money-plaque">
-        <div>
-          <span>Company Coffers</span>
-          <strong id="companyCoffersDisplay">0 septims</strong>
-        </div>
-        <div>
-          <span>Business Coffers</span>
-          <strong id="businessCoffersDisplay">0 septims</strong>
-        </div>
+      <section class="coffer-strip">
+        <div><span>Company Coffers</span><strong id="companyCoffersDisplay">0 septims</strong></div>
+        <div><span>Business Coffers</span><strong id="businessCoffersDisplay">0 septims</strong></div>
       </section>
 
-      <section class="leather-plaque user-plaque">
+      <section class="user-strip">
         <strong>Ko'vash</strong>
         <small>Company Owner</small>
       </section>
     </header>
 
-    <div class="workspace">
-      <aside id="sidebar" class="ledger-tabs">
-        <div class="tab-cap">Ledger Sections</div>
+    <div class="desk-workspace">
+      <aside id="sidebar" class="bookmark-stack">
+        <div class="bookmark-title">Ledger Sections</div>
         <nav id="nav"></nav>
       </aside>
 
-      <main class="book-shell">
-        <div class="book-cover"></div>
-        <div class="book-pages">
-          <div class="page-texture page-left"></div>
-          <div class="page-texture page-right"></div>
-          <div class="book-gutter"></div>
+      <main class="book">
+        <div class="cover-layer"></div>
+        <div class="page-block">
+          <div class="paper paper-left"></div>
+          <div class="paper paper-right"></div>
+          <div class="center-fold"></div>
 
-          <div class="book-content">
+          <div class="book-ui">
             <div class="page-heading">
               <div>
                 <span id="eyebrow" class="eyebrow">Company Overview</span>
@@ -65,39 +61,39 @@
               </div>
               <div id="pageActions" class="page-actions"></div>
             </div>
+
             <section id="app"></section>
           </div>
         </div>
-
-        <div class="book-corners corner-tl"></div>
-        <div class="book-corners corner-tr"></div>
-        <div class="book-corners corner-bl"></div>
-        <div class="book-corners corner-br"></div>
+        <span class="corner c1"></span>
+        <span class="corner c2"></span>
+        <span class="corner c3"></span>
+        <span class="corner c4"></span>
       </main>
 
-      <aside class="desk-right">
-        <section class="scroll-holder">
-          <div class="scroll-rod"></div>
+      <aside class="right-desk">
+        <section class="receipt-object">
+          <div class="scroll-roller roller-top"></div>
           <div id="globalReceiptScroll" class="receipt-scroll">
-            <div class="scroll-heading">Golden Sands</div>
+            <div class="scroll-brand">Golden Sands</div>
             <h3>Receipt</h3>
-            <p class="scroll-placeholder">Open the Register and prepare a sale. The receipt will be written here.</p>
+            <div class="receipt-idle">The next sale will be written here.</div>
           </div>
-          <div class="scroll-rod bottom"></div>
-          <div class="wax-seal">GS</div>
+          <div class="scroll-roller roller-bottom"></div>
+          <div class="wax">GS</div>
         </section>
 
-        <section class="notebook-card">
-          <div class="notebook-card-head">
+        <section class="mini-ledger">
+          <header>
             <span>Caravan Notebook</span>
-            <button class="ink-link" onclick="go('notebook')">Open</button>
-          </div>
+            <button onclick="go('notebook')">Open</button>
+          </header>
           <div id="notebookPreview"></div>
         </section>
       </aside>
     </div>
 
-    <footer class="desk-tools">
+    <footer class="desk-actions">
       <button onclick="go('register')">✦ Register</button>
       <button onclick="go('inventory')">▦ Inventory</button>
       <button onclick="go('transfers')">⇄ Transfers</button>
@@ -108,7 +104,6 @@
 
   <div id="backdrop" class="backdrop"></div>
   <div id="modalRoot"></div>
-
   <script src="app.js"></script>
 </body>
 </html>
