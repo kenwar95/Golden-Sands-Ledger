@@ -1,0 +1,12 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "golden-sands-ledger",
+  "compatibility_date": "2026-08-15",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "golden-sands-ledger",
+      "database_id": "fcb10916-a09c-477a-b5e3-03e904116718"
+    }
+  ]
+}
