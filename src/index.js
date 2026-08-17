@@ -141,6 +141,49 @@ async function getCore(env) {
     };
   });
 
+
+  const { results: notebookRows } = await env.DB.prepare(`
+    SELECT n.id,n.business_id,n.entry_text,n.is_pinned,n.created_at,e.display_name AS author
+    FROM notebook_entries n LEFT JOIN employees e ON e.id=n.author_employee_id
+    WHERE n.company_id=? ORDER BY n.created_at DESC
+  `).bind(company.id).all();
+
+  const { results: transferRows } = await env.DB.prepare(`
+    SELECT t.id,t.from_business_id,t.to_business_id,t.created_at,t.note,
+           fb.name AS from_name,tb.name AS to_name,e.display_name AS by_name
+    FROM transfers t JOIN businesses fb ON fb.id=t.from_business_id
+    JOIN businesses tb ON tb.id=t.to_business_id
+    LEFT JOIN employees e ON e.id=t.performed_by_employee_id
+    WHERE t.company_id=? ORDER BY t.created_at DESC
+  `).bind(company.id).all();
+
+  const { results: transferLineRows } = await env.DB.prepare(`
+    SELECT tl.transfer_id,tl.quantity,i.name AS item_name
+    FROM transfer_lines tl JOIN transfers t ON t.id=tl.transfer_id
+    JOIN items i ON i.id=tl.item_id WHERE t.company_id=?
+  `).bind(company.id).all();
+
+  const { results: saleRows } = await env.DB.prepare(`
+    SELECT s.*,e.display_name AS seller_name
+    FROM sales s JOIN businesses b ON b.id=s.business_id
+    LEFT JOIN employees e ON e.id=s.seller_employee_id
+    WHERE b.company_id=? ORDER BY s.created_at DESC
+  `).bind(company.id).all();
+
+  const { results: saleLineRows } = await env.DB.prepare(`
+    SELECT sl.sale_id,sl.quantity,i.name AS item_name
+    FROM sale_lines sl JOIN sales s ON s.id=sl.sale_id
+    JOIN businesses b ON b.id=s.business_id JOIN items i ON i.id=sl.item_id
+    WHERE b.company_id=?
+  `).bind(company.id).all();
+
+  const { results: salePartRows } = await env.DB.prepare(`
+    SELECT sp.sale_id,sp.employee_id,sp.role,sp.payout_amount,e.display_name
+    FROM sale_participants sp JOIN sales s ON s.id=sp.sale_id
+    JOIN businesses b ON b.id=s.business_id JOIN employees e ON e.id=sp.employee_id
+    WHERE b.company_id=? ORDER BY sp.sale_id,e.display_name
+  `).bind(company.id).all();
+
   const state = {
     company: {
       id: company.id,
@@ -170,7 +213,10 @@ async function getCore(env) {
       earnings: Number(e.lifetime_earnings || 0),
       assignments: assignmentsByEmployee.get(e.id) || {}
     })),
-    inventory
+    inventory,
+    notes:notebookRows.map(n=>({id:n.id,businessId:n.business_id,author:n.author||"Unknown",date:n.created_at,text:n.entry_text,pinned:!!n.is_pinned})),
+    transfers:transferRows.map(t=>{const lines=transferLineRows.filter(x=>x.transfer_id===t.id);return{id:t.id,businessId:t.from_business_id,date:t.created_at,item:lines.map(x=>x.item_name).join(", ")||"Transfer",qty:lines.reduce((a,x)=>a+Number(x.quantity||0),0),from:t.from_name,to:t.to_name,by:t.by_name||"Unknown",trace:[]}}),
+    history:saleRows.map(s=>({id:s.id,businessId:s.business_id,type:"Sale",date:s.created_at,who:s.seller_name||"Unknown",detail:saleLineRows.filter(x=>x.sale_id===s.id).map(x=>`${x.item_name} × ${x.quantity}`).join(", "),amount:Number(s.sale_total||0),companyCut:Number(s.company_cut_amount||0),share:0,participants:salePartRows.filter(x=>x.sale_id===s.id).map(x=>({id:x.employee_id,name:x.display_name,roles:[x.role],payout:Number(x.payout_amount||0)}))}))
   };
 
   return { initialized: true, state };
@@ -482,6 +528,84 @@ async function stockIntake(env, body) {
   return getCore(env);
 }
 
+async function createNotebookEntry(env,body){
+  const c=await firstCompany(env);
+  await env.DB.prepare(`INSERT INTO notebook_entries(company_id,business_id,author_employee_id,entry_text,is_pinned) VALUES(?,?,?,?,?)`)
+    .bind(c.id,Number(body.businessId)||null,Number(body.employeeId)||null,body.text,body.pinned?1:0).run();
+  return getCore(env);
+}
+async function createTransfer(env,body){
+  const c=await firstCompany(env);
+  const entry=await env.DB.prepare(`SELECT ie.*,i.name FROM inventory_entries ie JOIN items i ON i.id=ie.item_id WHERE ie.id=?`).bind(Number(body.inventoryEntryId)).first();
+  if(!entry)throw new Error("Inventory entry not found");
+  const qty=Number(body.qty||0); if(qty<=0)throw new Error("Invalid quantity");
+  const available=await env.DB.prepare(`SELECT COALESCE(SUM(quantity_remaining),0) qty FROM stock_batches WHERE business_id=? AND item_id=? AND condition_name=? AND quantity_remaining>0`)
+    .bind(entry.business_id,entry.item_id,entry.condition_name).first();
+  if(Number(available.qty)<qty)throw new Error("Not enough stock");
+  const tr=await env.DB.prepare(`INSERT INTO transfers(company_id,from_business_id,to_business_id,performed_by_employee_id,status,note,completed_at) VALUES(?,?,?,?, 'Completed', ?, CURRENT_TIMESTAMP)`)
+    .bind(c.id,entry.business_id,Number(body.toBusinessId),Number(body.employeeId)||null,body.note||"").run();
+  const transferId=tr.meta.last_row_id;
+  const tl=await env.DB.prepare(`INSERT INTO transfer_lines(transfer_id,item_id,condition_name,quantity) VALUES(?,?,?,?)`)
+    .bind(transferId,entry.item_id,entry.condition_name,qty).run();
+  const lineId=tl.meta.last_row_id;
+  await env.DB.prepare(`INSERT INTO inventory_entries(business_id,item_id,condition_name,unit_sale_price) VALUES(?,?,?,?) ON CONFLICT(business_id,item_id,condition_name) DO UPDATE SET unit_sale_price=excluded.unit_sale_price,is_active=1,updated_at=CURRENT_TIMESTAMP`)
+    .bind(Number(body.toBusinessId),entry.item_id,entry.condition_name,entry.unit_sale_price).run();
+  const {results:batches}=await env.DB.prepare(`SELECT * FROM stock_batches WHERE business_id=? AND item_id=? AND condition_name=? AND quantity_remaining>0 ORDER BY id`)
+    .bind(entry.business_id,entry.item_id,entry.condition_name).all();
+  let need=qty;
+  for(const b of batches){
+    if(need<=0)break;
+    const moved=Math.min(need,Number(b.quantity_remaining));
+    await env.DB.prepare("UPDATE stock_batches SET quantity_remaining=quantity_remaining-? WHERE id=?").bind(moved,b.id).run();
+    const nr=await env.DB.prepare(`INSERT INTO stock_batches(business_id,item_id,condition_name,quantity_remaining,unit_sale_price,original_stocker_employee_id,parent_batch_id,source_type,source_reference_id,source_note) VALUES(?,?,?,?,?,?,?,?,?,?)`)
+      .bind(Number(body.toBusinessId),b.item_id,b.condition_name,moved,b.unit_sale_price,b.original_stocker_employee_id,b.id,"TRANSFER",transferId,"Transfer stock").run();
+    const newBatchId=nr.meta.last_row_id;
+    await env.DB.prepare(`INSERT INTO transfer_batch_movements(transfer_line_id,source_batch_id,destination_batch_id,quantity) VALUES(?,?,?,?)`).bind(lineId,b.id,newBatchId,moved).run();
+    const {results:parts}=await env.DB.prepare("SELECT employee_id,role FROM stock_batch_participants WHERE batch_id=?").bind(b.id).all();
+    for(const p of parts)await env.DB.prepare(`INSERT OR IGNORE INTO stock_batch_participants(batch_id,employee_id,role) VALUES(?,?,?)`).bind(newBatchId,p.employee_id,p.role).run();
+    if(body.employeeId)await env.DB.prepare(`INSERT OR IGNORE INTO stock_batch_participants(batch_id,employee_id,role) VALUES(?,?, 'TRANSFEROR')`).bind(newBatchId,Number(body.employeeId)).run();
+    need-=moved;
+  }
+  return getCore(env);
+}
+async function createSale(env,body){
+  const c=await firstCompany(env),businessId=Number(body.businessId),sellerId=Number(body.sellerId);
+  const discount=Math.max(0,Math.min(100,Number(body.discount||0))),cart=body.items||[];
+  let subtotal=0; for(const x of cart)subtotal+=Number(x.price||0)*Number(x.qty||0);
+  const total=Math.round(subtotal*(1-discount/100)),cutPercent=Number(body.companyCutPercent??c.default_company_cut_percent??0),cut=Math.round(total*cutPercent/100),pool=total-cut;
+  const sr=await env.DB.prepare(`INSERT INTO sales(business_id,seller_employee_id,subtotal,discount_percent,sale_total,company_cut_percent,company_cut_amount,employee_pool_amount,status) VALUES(?,?,?,?,?,?,?,?,'Completed')`)
+    .bind(businessId,sellerId,subtotal,discount,total,cutPercent,cut,pool).run();
+  const saleId=sr.meta.last_row_id,contributors=new Set(),participants=new Set([sellerId,...(body.extraParticipantIds||[]).map(Number)]);
+  for(const x of cart){
+    const ie=await env.DB.prepare("SELECT * FROM inventory_entries WHERE id=?").bind(Number(x.inventoryEntryId)).first();
+    if(!ie)throw new Error("Inventory entry missing");
+    const qty=Number(x.qty),lr=await env.DB.prepare(`INSERT INTO sale_lines(sale_id,item_id,condition_name,quantity,unit_price,line_total) VALUES(?,?,?,?,?,?)`)
+      .bind(saleId,ie.item_id,ie.condition_name,qty,Number(x.price),qty*Number(x.price)).run(),lineId=lr.meta.last_row_id;
+    const {results:batches}=await env.DB.prepare(`SELECT * FROM stock_batches WHERE business_id=? AND item_id=? AND condition_name=? AND quantity_remaining>0 ORDER BY id`).bind(businessId,ie.item_id,ie.condition_name).all();
+    let need=qty;
+    for(const b of batches){
+      if(need<=0)break;
+      const used=Math.min(need,Number(b.quantity_remaining));
+      await env.DB.prepare("UPDATE stock_batches SET quantity_remaining=quantity_remaining-? WHERE id=?").bind(used,b.id).run();
+      await env.DB.prepare("INSERT INTO sale_line_batches(sale_line_id,batch_id,quantity) VALUES(?,?,?)").bind(lineId,b.id,used).run();
+      const {results:parts}=await env.DB.prepare("SELECT employee_id FROM stock_batch_participants WHERE batch_id=?").bind(b.id).all();
+      for(const p of parts)contributors.add(Number(p.employee_id));
+      if(b.original_stocker_employee_id)contributors.add(Number(b.original_stocker_employee_id));
+      need-=used;
+    }
+    if(need>0)throw new Error("Not enough stock");
+  }
+  contributors.forEach(id=>participants.add(id));
+  const ids=[...participants].filter(Boolean),share=ids.length?Math.floor(pool/ids.length):0,extras=(body.extraParticipantIds||[]).map(Number);
+  for(const id of ids){
+    const roles=[]; if(id===sellerId)roles.push("Seller"); if(contributors.has(id))roles.push("Stock Contributor"); if(extras.includes(id))roles.push("Additional");
+    for(const role of roles)await env.DB.prepare(`INSERT OR IGNORE INTO sale_participants(sale_id,employee_id,role,is_auto_added,payout_amount) VALUES(?,?,?,?,?)`).bind(saleId,id,role,role==="Stock Contributor"?1:0,share).run();
+    await env.DB.prepare(`UPDATE employees SET lifetime_earnings=lifetime_earnings+?,updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(share,id).run();
+  }
+  if(cut)await env.DB.prepare(`INSERT INTO coffer_transactions(company_id,business_id,transaction_type,amount,reference_type,reference_id,performed_by_employee_id,note) VALUES(?,?, 'SALE_COMPANY_CUT', ?, 'SALE', ?, ?, 'Completed sale')`).bind(c.id,businessId,cut,saleId,sellerId).run();
+  return getCore(env);
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -522,6 +646,13 @@ export default {
 
       if (url.pathname === "/api/stock-intake" && request.method === "POST")
         return json(await stockIntake(env, await readJson(request)));
+
+      if (url.pathname === "/api/notebook" && request.method === "POST")
+        return json(await createNotebookEntry(env, await readJson(request)));
+      if (url.pathname === "/api/transfers" && request.method === "POST")
+        return json(await createTransfer(env, await readJson(request)));
+      if (url.pathname === "/api/sales" && request.method === "POST")
+        return json(await createSale(env, await readJson(request)));
 
       if (url.pathname.startsWith("/api/"))
         return json({ error: "Not found" }, { status: 404 });
