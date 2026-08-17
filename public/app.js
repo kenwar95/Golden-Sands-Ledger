@@ -70,56 +70,100 @@ async function changeMyPassword(){
 }
 
 function showLockedLedger(){
-  const sidebar=document.getElementById('sidebar');
-  const backdrop=document.getElementById('backdrop');
-  const right=document.querySelector('.notebook-panel, .right-panel, aside');
-  const nav=document.getElementById('nav');
-  const bizSelect=document.getElementById('businessSelect');
-  const bizLocation=document.getElementById('businessLocation');
-  const notebookPreview=document.getElementById('notebookPreview');
-  const pageTitle=document.getElementById('pageTitle');
-  const eyebrow=document.getElementById('eyebrow');
-  const pageActions=document.getElementById('pageActions');
+  // Do not restructure the ledger layout. Cover it with a self-contained full-screen gate.
+  document.body.style.overflow='hidden';
 
-  if(sidebar)sidebar.style.display='none';
-  if(backdrop)backdrop.style.display='none';
-  if(right)right.style.display='none';
-  if(nav)nav.innerHTML='';
-  if(bizSelect)bizSelect.innerHTML='';
-  if(bizLocation)bizLocation.textContent='';
-  if(notebookPreview)notebookPreview.innerHTML='';
-  if(pageTitle)pageTitle.textContent='';
-  if(eyebrow)eyebrow.textContent='';
-  if(pageActions)pageActions.innerHTML='';
+  let gate=document.getElementById('ledgerLoginGate');
+  if(gate)gate.remove();
 
-  if(app){
-    app.innerHTML=`
-      <div style="min-height:70vh;display:flex;align-items:center;justify-content:center;padding:32px">
-        <div class="card" style="width:min(440px,100%);text-align:center;padding:30px">
-          <div style="font-size:42px;margin-bottom:12px">GS</div>
-          <h2 style="margin:0 0 8px">Company Ledger</h2>
-          <p style="margin:0 0 22px;opacity:.75">Authorized employees only.</p>
-          <div class="form-grid">
-            <div class="field span2" style="text-align:left">
-              <label>Email</label>
-              <input id="loginEmail" class="input" type="email" autocomplete="username">
-            </div>
-            <div class="field span2" style="text-align:left">
-              <label>Password</label>
-              <input id="loginPassword" class="input" type="password" autocomplete="current-password">
-            </div>
+  gate=document.createElement('div');
+  gate.id='ledgerLoginGate';
+  gate.style.cssText=`
+    position:fixed;
+    inset:0;
+    z-index:999999;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+    box-sizing:border-box;
+    background:
+      radial-gradient(circle at 50% 30%, rgba(111,73,31,.10), transparent 38%),
+      linear-gradient(180deg,#e8d3a6 0%,#d9bd87 100%);
+  `;
+
+  gate.innerHTML=`
+    <div style="
+      width:min(460px,100%);
+      background:#f2dfb7;
+      border:1px solid rgba(95,57,25,.45);
+      box-shadow:0 18px 60px rgba(37,19,8,.28);
+      padding:34px 36px 32px;
+      box-sizing:border-box;
+      color:#2f1d10;
+      font-family:Georgia,'Times New Roman',serif;
+    ">
+      <div style="display:flex;align-items:center;gap:15px;margin-bottom:26px;">
+        <div style="
+          width:62px;height:62px;border-radius:50%;
+          border:3px solid #a8873d;
+          display:flex;align-items:center;justify-content:center;
+          font-weight:700;font-size:24px;color:#5d4519;
+          flex:0 0 auto;
+        ">GS</div>
+        <div style="min-width:0;">
+          <div style="font-size:25px;font-weight:700;line-height:1.08;">Golden Sands Trading Company</div>
+          <div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;opacity:.65;margin-top:5px;">
+            Merchant Ledger & Caravan Records
           </div>
-          <button class="btn" style="width:100%;margin-top:16px" onclick="nativeLogin()">Sign In</button>
         </div>
-      </div>`;
-  }
+      </div>
 
-  const ownerName=document.getElementById('brandOwnerName');
-  const ownerTitle=document.getElementById('brandOwnerTitle');
-  if(ownerName)ownerName.textContent='';
-  if(ownerTitle)ownerTitle.textContent='';
+      <div style="border-top:1px solid rgba(95,57,25,.22);padding-top:24px;">
+        <div style="font-size:27px;font-weight:700;margin-bottom:6px;">Ledger Sign In</div>
+        <div style="font-size:15px;opacity:.72;margin-bottom:24px;">Authorized employees only.</div>
 
-  renderAuthControls();
+        <label style="display:block;font-size:12px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:7px;">
+          Email
+        </label>
+        <input id="loginEmail" type="email" autocomplete="username" style="
+          width:100%;box-sizing:border-box;height:46px;
+          border:1px solid #a88755;background:#f8e8c8;
+          padding:0 12px;font:16px Georgia,'Times New Roman',serif;
+          color:#2f1d10;outline:none;margin-bottom:17px;
+        ">
+
+        <label style="display:block;font-size:12px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:7px;">
+          Password
+        </label>
+        <input id="loginPassword" type="password" autocomplete="current-password" style="
+          width:100%;box-sizing:border-box;height:46px;
+          border:1px solid #a88755;background:#f8e8c8;
+          padding:0 12px;font:16px Georgia,'Times New Roman',serif;
+          color:#2f1d10;outline:none;margin-bottom:20px;
+        ">
+
+        <button id="lockedLoginButton" type="button" style="
+          width:100%;height:48px;border:1px solid #5a3218;
+          background:#4b2a16;color:#f7e4bb;
+          font:700 17px Georgia,'Times New Roman',serif;
+          cursor:pointer;
+        ">Enter Ledger</button>
+
+        <div style="margin-top:18px;text-align:center;font-size:12px;opacity:.55;">
+          Company records are available after authentication.
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(gate);
+
+  const submit=()=>nativeLogin();
+  gate.querySelector('#lockedLoginButton').onclick=submit;
+  gate.querySelector('#loginEmail').addEventListener('keydown',e=>{if(e.key==='Enter')submit()});
+  gate.querySelector('#loginPassword').addEventListener('keydown',e=>{if(e.key==='Enter')submit()});
+  setTimeout(()=>gate.querySelector('#loginEmail')?.focus(),0);
 }
 
 function showNativeLogin(required=true){
@@ -244,5 +288,7 @@ function modal(title,body,onSave){$('#modalRoot').innerHTML=`<div class="modal-b
     showLockedLedger();
     return;
   }
+  document.body.style.overflow='';
+  document.getElementById('ledgerLoginGate')?.remove();
   await initSharedData();
 })();
