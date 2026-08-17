@@ -430,20 +430,32 @@ window.newOrder=()=>{
     if(!customerName||!holdDelivery||!estimatedTime)return alert('Complete Name, Hold Delivery, and Estimated Time.');
     if(!orderDraftItems.length)return alert('Add at least one item.');
 
-    await api('/api/orders',{
-      method:'POST',
-      body:JSON.stringify({
-        businessId:state.activeBusinessId,
-        customerName,
-        holdDelivery,
-        estimatedTime,
-        receivedByEmployeeId:Number($('#orderReceiver').value),
-        items:orderDraftItems
-      })
-    });
-    closeModal();
-    await reloadCore();
-    go('orders');
+    try{
+      const result=await api('/api/orders',{
+        method:'POST',
+        body:JSON.stringify({
+          businessId:state.activeBusinessId,
+          customerName,
+          holdDelivery,
+          estimatedTime,
+          receivedByEmployeeId:Number($('#orderReceiver').value),
+          items:orderDraftItems
+        })
+      });
+
+      if(result?.core?.initialized){
+        mergeCore(result.core.state);
+        if(result.core.auth)authState={...authState,...result.core.auth};
+      }
+
+      closeModal();
+      await reloadCore();
+      go('orders');
+      alert(`Order received successfully.\nPending Order #${result.orderId||''}`);
+    }catch(err){
+      console.error('Order creation failed:',err);
+      alert('Order could not be saved: '+err.message);
+    }
   });
 };
 
