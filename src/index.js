@@ -551,13 +551,11 @@ async function getCore(env) {
     WHERE o.company_id=?
     ORDER BY
       CASE o.status
-        WHEN 'Pending' THEN 1
+        WHEN 'Open' THEN 1
         WHEN 'In Progress' THEN 2
-        WHEN 'Ready' THEN 3
-        WHEN 'Open' THEN 4
-        WHEN 'Completed' THEN 5
-        WHEN 'Cancelled' THEN 6
-        ELSE 7
+        WHEN 'Completed' THEN 3
+        WHEN 'Cancelled' THEN 4
+        ELSE 5
       END,
       o.created_at DESC
   `).bind(company.id).all();
@@ -1093,7 +1091,7 @@ async function createCustomerOrder(env,user,body){
       company_id,business_id,customer_name,destination_hold,quoted_total,
       company_cut_percent,status,notes,created_by_employee_id,
       received_by_employee_id,estimated_time
-    ) VALUES(?,?,?,?,?,?, 'Pending', ?,?,?,?)
+    ) VALUES(?,?,?,?,?,?, 'Open', ?,?,?,?)
   `).bind(
     c.id,businessId,customerName,holdDelivery,total,
     Number(c.default_company_cut_percent||0),
@@ -1116,7 +1114,7 @@ async function createCustomerOrder(env,user,body){
 }
 
 async function updateOrderStatus(env,orderId,status){
-  const allowed=["Pending","In Progress","Ready","Cancelled"];
+  const allowed=["Open","In Progress","Cancelled"];
   if(!allowed.includes(status))throw new HttpError(400,"Invalid order status.");
   const order=await env.DB.prepare(
     "SELECT status FROM customer_orders WHERE id=?"

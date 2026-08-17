@@ -257,7 +257,7 @@ function orders(){
     <div class="business-grid">
       ${rows.map(o=>`
         <div class="business-card">
-          <span class="eyebrow">${o.status}</span>
+          <span class="eyebrow">${o.status==='Open'?'Pending':o.status}</span>
           <h3>${o.customerName}</h3>
           <p>
             <strong>Hold Delivery:</strong> ${o.holdDelivery||'—'}<br>
@@ -280,7 +280,7 @@ function orders(){
             ${!['Completed','Cancelled'].includes(o.status)?`
               <button class="btn secondary" onclick="fulfillOrder(${o.id})">Fulfill Order</button>
               <button class="btn ghost" onclick="setOrderStatus(${o.id},'In Progress')">In Progress</button>
-              <button class="btn ghost" onclick="setOrderStatus(${o.id},'Ready')">Ready</button>
+              ${o.status!=='Open'?`<button class="btn ghost" onclick="setOrderStatus(${o.id},'Open')">Pending</button>`:''}
               <button class="btn ghost" onclick="setOrderStatus(${o.id},'Cancelled')">Cancel</button>
             `:''}
           </div>
