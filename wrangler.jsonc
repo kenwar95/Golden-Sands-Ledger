@@ -14,7 +14,8 @@
     {
       "binding": "DB",
       "database_name": "golden-sands-ledger",
-      "database_id": "fcb10916-a09c-477a-b5e3-03e904116718"
+      "database_id": "fcb10916-a09c-477a-b5e3-03e904116718",
+      "migrations_dir": "migrations"
     }
   ]
 }
