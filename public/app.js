@@ -68,6 +68,60 @@ async function changeMyPassword(){
     }catch(err){alert(err.message)}
   });
 }
+
+function showLockedLedger(){
+  const sidebar=document.getElementById('sidebar');
+  const backdrop=document.getElementById('backdrop');
+  const right=document.querySelector('.notebook-panel, .right-panel, aside');
+  const nav=document.getElementById('nav');
+  const bizSelect=document.getElementById('businessSelect');
+  const bizLocation=document.getElementById('businessLocation');
+  const notebookPreview=document.getElementById('notebookPreview');
+  const pageTitle=document.getElementById('pageTitle');
+  const eyebrow=document.getElementById('eyebrow');
+  const pageActions=document.getElementById('pageActions');
+
+  if(sidebar)sidebar.style.display='none';
+  if(backdrop)backdrop.style.display='none';
+  if(right)right.style.display='none';
+  if(nav)nav.innerHTML='';
+  if(bizSelect)bizSelect.innerHTML='';
+  if(bizLocation)bizLocation.textContent='';
+  if(notebookPreview)notebookPreview.innerHTML='';
+  if(pageTitle)pageTitle.textContent='';
+  if(eyebrow)eyebrow.textContent='';
+  if(pageActions)pageActions.innerHTML='';
+
+  if(app){
+    app.innerHTML=`
+      <div style="min-height:70vh;display:flex;align-items:center;justify-content:center;padding:32px">
+        <div class="card" style="width:min(440px,100%);text-align:center;padding:30px">
+          <div style="font-size:42px;margin-bottom:12px">GS</div>
+          <h2 style="margin:0 0 8px">Company Ledger</h2>
+          <p style="margin:0 0 22px;opacity:.75">Authorized employees only.</p>
+          <div class="form-grid">
+            <div class="field span2" style="text-align:left">
+              <label>Email</label>
+              <input id="loginEmail" class="input" type="email" autocomplete="username">
+            </div>
+            <div class="field span2" style="text-align:left">
+              <label>Password</label>
+              <input id="loginPassword" class="input" type="password" autocomplete="current-password">
+            </div>
+          </div>
+          <button class="btn" style="width:100%;margin-top:16px" onclick="nativeLogin()">Sign In</button>
+        </div>
+      </div>`;
+  }
+
+  const ownerName=document.getElementById('brandOwnerName');
+  const ownerTitle=document.getElementById('brandOwnerTitle');
+  if(ownerName)ownerName.textContent='';
+  if(ownerTitle)ownerTitle.textContent='';
+
+  renderAuthControls();
+}
+
 function showNativeLogin(required=true){
   $('#modalRoot').innerHTML=`<div class="modal-backdrop"><div class="modal" style="max-width:430px"><h3>Sign in to ${state.company?.name||'the Ledger'}</h3><div class="form-grid"><div class="field span2"><label>Email</label><input id="loginEmail" class="input" type="email" autocomplete="username"></div><div class="field span2"><label>Password</label><input id="loginPassword" class="input" type="password" autocomplete="current-password"></div></div><div class="modal-actions">${required?'':'<button class="btn ghost" onclick="closeModal()">Cancel</button>'}<button class="btn" onclick="nativeLogin()">Sign In</button></div></div></div>`;
 }
@@ -78,7 +132,7 @@ function renderAuthControls(){
   if(authState.user){
     a.innerHTML=`<span style="font-size:12px;opacity:.85">${authState.user.name} · ${authState.user.role}</span><button class="small-link" onclick="changeMyPassword()">Password</button><button class="small-link" onclick="signOutLedger()">Sign out</button>`;
   }else{
-    a.innerHTML=`<button class="small-link" onclick="showNativeLogin(false)">Sign in</button>`;
+    a.innerHTML=authState.enforced?'':`<button class="small-link" onclick="showNativeLogin(false)">Sign in</button>`;
   }
 }
 function allowedNav(view){
@@ -187,7 +241,8 @@ function modal(title,body,onSave){$('#modalRoot').innerHTML=`<div class="modal-b
 (async()=>{
   await refreshAuth();
   if(authState.enforced&&!authState.user){
-    buildNav();buildBusinessSelect();applyBranding();renderAuthControls();showNativeLogin(true);return;
+    showLockedLedger();
+    return;
   }
   await initSharedData();
 })();
