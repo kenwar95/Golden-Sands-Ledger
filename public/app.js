@@ -228,6 +228,30 @@ async function initSharedData(){
   buildNav();buildBusinessSelect();renderNotebookPreview();applyBranding();render();
 }
 
+
+function applyBranding(){
+  const company=state.company||{};
+  const name=company.name||'Golden Sands Trading Company';
+  const owner=company.owner||"Ko'vash";
+  const ownerTitle=company.ownerTitle||'Company Owner';
+  const subtitle=company.subtitle||'Merchant Ledger & Caravan Records';
+  const initials=(company.initials||'GS').slice(0,4);
+
+  const brandName=document.getElementById('brandCompanyName');
+  const brandSubtitle=document.getElementById('brandSubtitle');
+  const brandSeal=document.getElementById('brandSeal');
+  const ownerName=document.getElementById('brandOwnerName');
+  const ownerTitleEl=document.getElementById('brandOwnerTitle');
+
+  if(brandName)brandName.textContent=name;
+  if(brandSubtitle)brandSubtitle.textContent=subtitle;
+  if(brandSeal)brandSeal.textContent=initials;
+  if(ownerName)ownerName.textContent=authState.user?.name||owner;
+  if(ownerTitleEl)ownerTitleEl.textContent=authState.user?.role||ownerTitle;
+
+  document.title=name;
+}
+
 function setHead(t,e){$('#pageTitle').textContent=t;$('#eyebrow').textContent=e||activeBusiness().name;$('#pageActions').innerHTML=''}function stat(l,v,s,i='◈'){return `<div class="card stat"><span class="sigil">${i}</span><div class="label">${l}</div><div class="value">${v}</div><div class="sub">${s}</div></div>`}function table(h,r){return `<div class="table-wrap"><table><thead><tr>${h.map(x=>`<th>${x}</th>`).join('')}</tr></thead><tbody>${r.join('')}</tbody></table></div>`}
 function buildNav(){$('#nav').innerHTML=navGroups.map(([g,items])=>{const visible=items.filter(([v])=>allowedNav(v));return visible.length?`<div class="nav-group-title">${g}</div>${visible.map(([v,i,l])=>`<button class="nav-item ${currentView===v?'active':''}" data-view="${v}"><span>${i}</span>${l}</button>`).join('')}`:''}).join('');document.querySelectorAll('.nav-item').forEach(b=>b.onclick=()=>go(b.dataset.view))}
 function buildBusinessSelect(){const s=$('#businessSelect');const actives=state.businesses.filter(b=>b.status==='Active');if(!actives.some(b=>String(b.id)===String(state.activeBusinessId))&&actives[0])state.activeBusinessId=actives[0].id;s.innerHTML=actives.map(b=>`<option value="${b.id}" ${String(b.id)===String(state.activeBusinessId)?'selected':''}>${b.name}</option>`).join('');$('#businessLocation').textContent=`${activeBusiness().hold} · ${activeBusiness().location}`;s.onchange=()=>{const selected=state.businesses.find(b=>String(b.id)===String(s.value));state.activeBusinessId=selected?selected.id:s.value;save();buildBusinessSelect();render();renderNotebookPreview()}}
