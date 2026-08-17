@@ -182,7 +182,7 @@ function renderAuthControls(){
 function allowedNav(view){
   if(!authState.enforced&&!authState.user)return true;
   if(authState.user?.isOwner)return true;
-  const map={company:true,businesses:can('businesses'),dashboard:true,register:can('register'),orders:can('orders'),inventory:can('inventory_view')||can('inventory_edit'),transfers:can('transfers'),notebook:can('notebook'),employees:can('employees'),coffers:can('coffers'),history:can('register')||can('coffers'),earnings:can('employees')||can('coffers'),permissions:can('permissions'),settings:can('settings')};
+  const map={company:true,owner_dashboard:!!authState.user?.isOwner,businesses:can('businesses'),dashboard:true,register:can('register'),orders:can('orders'),inventory:can('inventory_view')||can('inventory_edit'),transfers:can('transfers'),notebook:can('notebook'),employees:can('employees'),coffers:can('coffers'),history:can('register')||can('coffers'),earnings:can('employees')||can('coffers'),permissions:can('permissions'),settings:can('settings')};
   return !!map[view];
 }
 
@@ -257,8 +257,92 @@ function buildNav(){$('#nav').innerHTML=navGroups.map(([g,items])=>{const visibl
 function buildBusinessSelect(){const s=$('#businessSelect');const actives=state.businesses.filter(b=>b.status==='Active');if(!actives.some(b=>String(b.id)===String(state.activeBusinessId))&&actives[0])state.activeBusinessId=actives[0].id;s.innerHTML=actives.map(b=>`<option value="${b.id}" ${String(b.id)===String(state.activeBusinessId)?'selected':''}>${b.name}</option>`).join('');$('#businessLocation').textContent=`${activeBusiness().hold} · ${activeBusiness().location}`;s.onchange=()=>{const selected=state.businesses.find(b=>String(b.id)===String(s.value));state.activeBusinessId=selected?selected.id:s.value;save();buildBusinessSelect();render();renderNotebookPreview()}}
 function renderNotebookPreview(){const ns=state.notes.filter(n=>String(n.businessId)===String(state.activeBusinessId)).slice(0,3);$('#notebookPreview').innerHTML=ns.length?ns.map(n=>`<div class="note-preview"><strong>${n.author}</strong><time>${n.date}</time><p>${n.text}</p></div>`).join(''):'<div class="empty">No notes.</div>'}
 function go(v){if(!allowedNav(v))return alert('You do not have permission to open that section.');currentView=v;buildNav();render();closeNav()}window.go=go;function closeNav(){$('#sidebar').classList.remove('open');$('#backdrop').classList.remove('show')}$('#navToggle').onclick=()=>{$('#sidebar').classList.toggle('open');$('#backdrop').classList.toggle('show')};$('#backdrop').onclick=closeNav;
-function render(){({company,businesses,dashboard,register,orders,inventory,transfers,notebook,employees,coffers,history,earnings,permissions,settings}[currentView])();renderNotebookPreview()}
+function render(){({company,owner_dashboard,businesses,dashboard,register,orders,inventory,transfers,notebook,employees,coffers,history,earnings,permissions,settings}[currentView])();renderNotebookPreview()}
 function company(){setHead('Company Overview','Golden Sands Trading Company');app.innerHTML=`<div class="grid g4">${stat('Company Coffers',money(state.businesses.reduce((a,b)=>a+b.coffers,0)),'Across all businesses')}${stat('Active Businesses',state.businesses.filter(b=>b.status==='Active').length,'Currently operating','⌂')}${stat('Employees',state.employees.length,'Company members','♟')}${stat('Inventory Units',state.inventory.reduce((a,b)=>a+b.qty,0),'Across all businesses','▦')}</div>`}
+
+function owner_dashboard(){
+  if(!authState.user?.isOwner){go('company');return}
+  setHead('Owner Dashboard','Company-Wide Command Center');
+  $('#pageActions').innerHTML='<button class="btn ghost" onclick="reloadCore()">Refresh</button>';
+
+  const businesses=state.businesses||[];
+  const inventory=state.inventory||[];
+  const orders=state.orders||[];
+  const history=state.history||[];
+  const transfers=state.transfers||[];
+  const employees=state.employees||[];
+
+  const totalCoffers=businesses.reduce((a,b)=>a+Number(b.coffers||0),0);
+  const openOrders=orders.filter(o=>!['Completed','Cancelled'].includes(o.status));
+  const completedOrders=orders.filter(o=>o.status==='Completed');
+  const stockUnits=inventory.reduce((a,i)=>a+Number(i.qty||0),0);
+  const lowStock=inventory.filter(i=>Number(i.qty||0)<=3).sort((a,b)=>Number(a.qty||0)-Number(b.qty||0));
+  const totalSales=history.reduce((a,h)=>a+Number(h.amount||0),0);
+  const totalCuts=history.reduce((a,h)=>a+Number(h.companyCut||0),0);
+
+  const businessSales=businesses.map(b=>{
+    const hs=history.filter(h=>String(h.businessId)===String(b.id));
+    const os=openOrders.filter(o=>String(o.businessId)===String(b.id));
+    const units=inventory.filter(i=>String(i.businessId)===String(b.id)).reduce((a,i)=>a+Number(i.qty||0),0);
+    return {...b,sales:hs.reduce((a,h)=>a+Number(h.amount||0),0),saleCount:hs.length,openOrders:os.length,units};
+  }).sort((a,b)=>b.sales-a.sales);
+
+  const recentSales=[...history].sort((a,b)=>String(b.date).localeCompare(String(a.date))).slice(0,8);
+  const recentTransfers=[...transfers].sort((a,b)=>String(b.date).localeCompare(String(a.date))).slice(0,6);
+  const topEmployees=[...employees].sort((a,b)=>Number(b.earnings||0)-Number(a.earnings||0)).slice(0,6);
+
+  const openBusiness=(id,view='dashboard')=>{
+    const selected=state.businesses.find(b=>String(b.id)===String(id));
+    if(selected)state.activeBusinessId=selected.id;
+    save();buildBusinessSelect();go(view);
+  };
+  window.ownerOpenBusiness=openBusiness;
+
+  app.innerHTML=`
+    <div class="grid g4">
+      ${stat('Company Coffers',money(totalCoffers),'Across all businesses','¤')}
+      ${stat('Pending Orders',openOrders.length,completedOrders.length+' completed','◇')}
+      ${stat('Recorded Sales',money(totalSales),history.length+' completed sales','✦')}
+      ${stat('Inventory Units',stockUnits,inventory.length+' item entries','▦')}
+    </div>
+
+    <div class="grid g2" style="margin-top:14px">
+      <div class="card">
+        <div class="toolbar"><div><span class="eyebrow">Attention</span><h3>Pending Orders</h3></div><button class="small-link" onclick="ownerOpenBusiness('${openOrders[0]?.businessId||state.activeBusinessId}','orders')">Open Orders</button></div>
+        ${openOrders.length?openOrders.slice(0,6).map(o=>`<div class="supplier-row"><span><strong>${o.customerName}</strong><br><small>${businesses.find(b=>String(b.id)===String(o.businessId))?.name||'Business'} · ${o.status==='Open'?'Pending':o.status} · ${o.estimatedTime||'No estimate'}</small></span><strong>${money(o.total)}</strong></div>`).join(''):'<div class="empty">No pending orders.</div>'}
+      </div>
+
+      <div class="card">
+        <span class="eyebrow">Attention</span><h3>Low Inventory</h3>
+        ${lowStock.length?lowStock.slice(0,8).map(i=>`<div class="supplier-row"><span><strong>${i.name}</strong><br><small>${businesses.find(b=>String(b.id)===String(i.businessId))?.name||'Business'} · ${i.condition}</small></span><strong>${i.qty} left</strong></div>`).join(''):'<div class="empty">No low-stock items at 3 units or fewer.</div>'}
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <span class="eyebrow">Company Structure</span><h3>Business Performance</h3>
+      ${table(['Business','Coffers','Sales','Transactions','Open Orders','Stock',''],businessSales.map(b=>`<tr><td><strong>${b.name}</strong><br><small>${b.hold} · ${b.location}</small></td><td>${money(b.coffers)}</td><td>${money(b.sales)}</td><td>${b.saleCount}</td><td>${b.openOrders}</td><td>${b.units}</td><td><button class="small-link" onclick="ownerOpenBusiness('${b.id}')">Open</button></td></tr>`))}
+    </div>
+
+    <div class="grid g2" style="margin-top:14px">
+      <div class="card">
+        <span class="eyebrow">Sales</span><h3>Recent Sales</h3>
+        ${recentSales.length?recentSales.map(h=>`<div class="supplier-row"><span><strong>${h.who}</strong><br><small>${businesses.find(b=>String(b.id)===String(h.businessId))?.name||'Business'} · ${h.detail}</small></span><strong>${money(h.amount)}</strong></div>`).join(''):'<div class="empty">No recorded sales.</div>'}
+        <div class="notice" style="margin-top:10px">Company cuts recorded from sales: <strong>${money(totalCuts)}</strong></div>
+      </div>
+
+      <div class="card">
+        <span class="eyebrow">Profit Distribution</span><h3>Employee Earnings</h3>
+        ${topEmployees.length?topEmployees.map((e,idx)=>`<div class="supplier-row"><span><strong>${idx+1}. ${e.name}</strong><br><small>${e.role}</small></span><strong>${money(e.earnings)}</strong></div>`).join(''):'<div class="empty">No employee earnings recorded.</div>'}
+        <button class="btn ghost" style="margin-top:10px" onclick="go('earnings')">View All Earnings</button>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <span class="eyebrow">Operations</span><h3>Recent Transfers</h3>
+      ${recentTransfers.length?table(['Date','Item','Qty','From','To','By'],recentTransfers.map(t=>`<tr><td>${t.date}</td><td>${t.item}</td><td>${t.qty}</td><td>${t.from}</td><td>${t.to}</td><td>${t.by}</td></tr>`)):'<div class="empty">No transfers recorded.</div>'}
+    </div>`;
+}
+
 function businesses(){setHead('Businesses','Company Structure');$('#pageActions').innerHTML='<button class="btn" onclick="addBusiness()">+ Add Business</button>';app.innerHTML=`<div class="business-grid">${state.businesses.map(b=>`<div class="business-card"><span class="eyebrow">${b.type}</span><h3>${b.name}</h3><p><strong>Status:</strong> ${b.status}<br><strong>Hold:</strong> ${b.hold}<br><strong>Location:</strong> ${b.location}<br>${b.description}</p><div class="quick"><button class="btn secondary" onclick="switchBusiness('${b.id}')">Open</button><button class="btn ghost" onclick="editBusiness('${b.id}')">Edit</button></div></div>`).join('')}</div>`}
 window.switchBusiness=id=>{const selected=state.businesses.find(b=>String(b.id)===String(id));state.activeBusinessId=selected?selected.id:id;save();buildBusinessSelect();go('dashboard')};window.addBusiness=()=>businessModal(null);window.editBusiness=id=>businessModal(state.businesses.find(b=>b.id===id));
 function businessModal(b){modal(b?'Edit Business':'Add Business',`<div class="form-grid"><div class="field span2"><label>Name</label><input id="bName" class="input" value="${b?.name||''}"></div><div class="field"><label>Type</label><input id="bType" class="input" value="${b?.type||'Shop'}"></div><div class="field"><label>Status</label><select id="bStatus" class="select"><option ${b?.status==='Active'?'selected':''}>Active</option><option ${b?.status==='Inactive'?'selected':''}>Inactive</option></select></div><div class="field"><label>Hold</label><input id="bHold" class="input" value="${b?.hold||''}"></div><div class="field"><label>Location</label><input id="bLoc" class="input" value="${b?.location||''}"></div><div class="field span2"><label>Description</label><textarea id="bDesc" class="textarea">${b?.description||''}</textarea></div></div>`,async()=>{const name=$('#bName').value.trim();if(!name)return;const payload={name,type:$('#bType').value||'Shop',status:$('#bStatus').value,hold:$('#bHold').value||'Unassigned',location:$('#bLoc').value||'Unassigned',description:$('#bDesc').value||''};if(b)await api('/api/businesses/'+b.id,{method:'PUT',body:JSON.stringify(payload)});else await api('/api/businesses',{method:'POST',body:JSON.stringify(payload)});closeModal();await reloadCore()})}
