@@ -16,7 +16,7 @@ async function firstCompany(env) {
 
 const AUTH_COOKIE = "gsl_session";
 const DAY = 86400;
-const PASSWORD_ITERATIONS = 210000;
+const PASSWORD_ITERATIONS = 100000;
 
 class HttpError extends Error {
   constructor(status, message) {
