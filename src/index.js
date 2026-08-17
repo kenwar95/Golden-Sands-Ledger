@@ -539,6 +539,49 @@ async function getCore(env) {
     WHERE b.company_id=? ORDER BY sp.sale_id,e.display_name
   `).bind(company.id).all();
 
+
+  const { results: orderRows } = await env.DB.prepare(`
+    SELECT
+      o.*,
+      re.display_name AS received_by_name,
+      ce.display_name AS created_by_name
+    FROM customer_orders o
+    LEFT JOIN employees re ON re.id=o.received_by_employee_id
+    LEFT JOIN employees ce ON ce.id=o.created_by_employee_id
+    WHERE o.company_id=?
+    ORDER BY
+      CASE o.status
+        WHEN 'Pending' THEN 1
+        WHEN 'In Progress' THEN 2
+        WHEN 'Ready' THEN 3
+        WHEN 'Open' THEN 4
+        WHEN 'Completed' THEN 5
+        WHEN 'Cancelled' THEN 6
+        ELSE 7
+      END,
+      o.created_at DESC
+  `).bind(company.id).all();
+
+  const { results: orderItemRows } = await env.DB.prepare(`
+    SELECT
+      oi.id,oi.order_id,oi.item_id,oi.condition_name,oi.quantity,oi.unit_price,
+      i.name AS item_name,i.category
+    FROM customer_order_items oi
+    JOIN customer_orders o ON o.id=oi.order_id
+    JOIN items i ON i.id=oi.item_id
+    WHERE o.company_id=?
+    ORDER BY oi.order_id,oi.id
+  `).bind(company.id).all();
+
+  const { results: orderParticipantRows } = await env.DB.prepare(`
+    SELECT op.order_id,op.employee_id,op.role,op.payout_amount,e.display_name
+    FROM customer_order_participants op
+    JOIN customer_orders o ON o.id=op.order_id
+    JOIN employees e ON e.id=op.employee_id
+    WHERE o.company_id=?
+    ORDER BY op.order_id,e.display_name
+  `).bind(company.id).all();
+
   const state = {
     company: {
       id: company.id,
@@ -571,7 +614,39 @@ async function getCore(env) {
     inventory,
     notes:notebookRows.map(n=>({id:n.id,businessId:n.business_id,author:n.author||"Unknown",date:n.created_at,text:n.entry_text,pinned:!!n.is_pinned})),
     transfers:transferRows.map(t=>{const lines=transferLineRows.filter(x=>x.transfer_id===t.id);return{id:t.id,businessId:t.from_business_id,date:t.created_at,item:lines.map(x=>x.item_name).join(", ")||"Transfer",qty:lines.reduce((a,x)=>a+Number(x.quantity||0),0),from:t.from_name,to:t.to_name,by:t.by_name||"Unknown",trace:[]}}),
-    history:saleRows.map(s=>({id:s.id,businessId:s.business_id,type:"Sale",date:s.created_at,who:s.seller_name||"Unknown",detail:saleLineRows.filter(x=>x.sale_id===s.id).map(x=>`${x.item_name} × ${x.quantity}`).join(", "),amount:Number(s.sale_total||0),companyCut:Number(s.company_cut_amount||0),share:0,participants:salePartRows.filter(x=>x.sale_id===s.id).map(x=>({id:x.employee_id,name:x.display_name,roles:[x.role],payout:Number(x.payout_amount||0)}))}))
+    history:saleRows.map(s=>({id:s.id,businessId:s.business_id,type:"Sale",date:s.created_at,who:s.seller_name||"Unknown",detail:saleLineRows.filter(x=>x.sale_id===s.id).map(x=>`${x.item_name} × ${x.quantity}`).join(", "),amount:Number(s.sale_total||0),companyCut:Number(s.company_cut_amount||0),share:0,participants:salePartRows.filter(x=>x.sale_id===s.id).map(x=>({id:x.employee_id,name:x.display_name,roles:[x.role],payout:Number(x.payout_amount||0)}))})),
+    orders:orderRows.map(o=>({
+      id:o.id,
+      businessId:o.business_id,
+      customerName:o.customer_name,
+      holdDelivery:o.destination_hold||"",
+      estimatedTime:o.estimated_time||"",
+      receivedByEmployeeId:o.received_by_employee_id,
+      receivedByName:o.received_by_name||"Unknown",
+      createdByEmployeeId:o.created_by_employee_id,
+      createdByName:o.created_by_name||"",
+      status:o.status,
+      notes:o.notes||"",
+      total:Number(o.quoted_total||0),
+      saleId:o.sale_id,
+      createdAt:o.created_at,
+      completedAt:o.completed_at,
+      items:orderItemRows.filter(x=>x.order_id===o.id).map(x=>({
+        id:x.id,
+        itemId:x.item_id,
+        name:x.item_name,
+        category:x.category||"Misc",
+        condition:x.condition_name||"Standard",
+        qty:Number(x.quantity||0),
+        price:Number(x.unit_price||0)
+      })),
+      participants:orderParticipantRows.filter(x=>x.order_id===o.id).map(x=>({
+        employeeId:x.employee_id,
+        name:x.display_name,
+        role:x.role,
+        payout:Number(x.payout_amount||0)
+      }))
+    }))
   };
 
   return { initialized: true, state };
@@ -961,6 +1036,276 @@ async function createSale(env,body){
   return getCore(env);
 }
 
+async function createCustomerOrder(env,user,body){
+  const c=await firstCompany(env);
+  const businessId=Number(body.businessId);
+  if(!businessId)throw new HttpError(400,"Business is required.");
+
+  const customerName=String(body.customerName||"").trim();
+  const holdDelivery=String(body.holdDelivery||"").trim();
+  const estimatedTime=String(body.estimatedTime||"").trim();
+  const items=Array.isArray(body.items)?body.items:[];
+  if(!customerName)throw new HttpError(400,"Client name is required.");
+  if(!holdDelivery)throw new HttpError(400,"Hold delivery is required.");
+  if(!estimatedTime)throw new HttpError(400,"Estimated time is required.");
+  if(!items.length)throw new HttpError(400,"Add at least one order item.");
+
+  let receivedBy=Number(body.receivedByEmployeeId)||null;
+  if(user && !user.isOwner)receivedBy=user.id;
+  if(!receivedBy)receivedBy=user?.id||null;
+
+  let total=0;
+  const normalized=[];
+
+  for(const raw of items){
+    const qty=Math.max(1,Number(raw.qty)||1);
+    const price=Math.max(0,Number(raw.price)||0);
+    total+=qty*price;
+
+    let itemId=Number(raw.itemId)||null;
+    let condition=String(raw.condition||"Standard").trim()||"Standard";
+
+    if(itemId){
+      const existing=await env.DB.prepare(
+        "SELECT id,name,category FROM items WHERE id=? AND company_id=?"
+      ).bind(itemId,c.id).first();
+      if(!existing)throw new HttpError(400,"One selected item is no longer available.");
+    }else{
+      const customName=String(raw.name||"").trim();
+      if(!customName)throw new HttpError(400,"Custom item name is required.");
+      let existing=await env.DB.prepare(
+        "SELECT id FROM items WHERE company_id=? AND lower(name)=lower(?)"
+      ).bind(c.id,customName).first();
+      if(existing)itemId=existing.id;
+      else{
+        const r=await env.DB.prepare(
+          "INSERT INTO items(company_id,name,category) VALUES(?,?,?)"
+        ).bind(c.id,customName,String(raw.category||"Misc").trim()||"Misc").run();
+        itemId=r.meta.last_row_id;
+      }
+    }
+
+    normalized.push({itemId,condition,qty,price});
+  }
+
+  const r=await env.DB.prepare(`
+    INSERT INTO customer_orders(
+      company_id,business_id,customer_name,destination_hold,quoted_total,
+      company_cut_percent,status,notes,created_by_employee_id,
+      received_by_employee_id,estimated_time
+    ) VALUES(?,?,?,?,?,?, 'Pending', ?,?,?,?)
+  `).bind(
+    c.id,businessId,customerName,holdDelivery,total,
+    Number(c.default_company_cut_percent||0),
+    String(body.notes||""),
+    user?.id||receivedBy,
+    receivedBy,
+    estimatedTime
+  ).run();
+
+  const orderId=r.meta.last_row_id;
+  for(const x of normalized){
+    await env.DB.prepare(`
+      INSERT INTO customer_order_items(
+        order_id,item_id,condition_name,quantity,unit_price
+      ) VALUES(?,?,?,?,?)
+    `).bind(orderId,x.itemId,x.condition,x.qty,x.price).run();
+  }
+
+  return orderId;
+}
+
+async function updateOrderStatus(env,orderId,status){
+  const allowed=["Pending","In Progress","Ready","Cancelled"];
+  if(!allowed.includes(status))throw new HttpError(400,"Invalid order status.");
+  const order=await env.DB.prepare(
+    "SELECT status FROM customer_orders WHERE id=?"
+  ).bind(Number(orderId)).first();
+  if(!order)throw new HttpError(404,"Order not found.");
+  if(order.status==="Completed")throw new HttpError(409,"Completed orders cannot be changed.");
+  await env.DB.prepare(
+    "UPDATE customer_orders SET status=? WHERE id=?"
+  ).bind(status,Number(orderId)).run();
+}
+
+async function orderFulfillmentPreview(env,orderId){
+  const order=await env.DB.prepare(
+    "SELECT * FROM customer_orders WHERE id=?"
+  ).bind(Number(orderId)).first();
+  if(!order)throw new HttpError(404,"Order not found.");
+
+  const {results:items}=await env.DB.prepare(`
+    SELECT oi.*,i.name AS item_name
+    FROM customer_order_items oi
+    JOIN items i ON i.id=oi.item_id
+    WHERE oi.order_id=?
+    ORDER BY oi.id
+  `).bind(Number(orderId)).all();
+
+  const availability=[];
+  let canFulfill=true;
+  for(const x of items){
+    const ie=await env.DB.prepare(`
+      SELECT id FROM inventory_entries
+      WHERE business_id=? AND item_id=? AND condition_name=? AND is_active=1
+      LIMIT 1
+    `).bind(order.business_id,x.item_id,x.condition_name).first();
+
+    let available=0;
+    if(ie){
+      const row=await env.DB.prepare(`
+        SELECT COALESCE(SUM(quantity_remaining),0) AS qty
+        FROM stock_batches
+        WHERE business_id=? AND item_id=? AND condition_name=? AND quantity_remaining>0
+      `).bind(order.business_id,x.item_id,x.condition_name).first();
+      available=Number(row?.qty||0);
+    }
+    if(!ie || available<Number(x.quantity))canFulfill=false;
+    availability.push({
+      orderItemId:x.id,itemId:x.item_id,name:x.item_name,
+      condition:x.condition_name,needed:Number(x.quantity),
+      available,inventoryEntryId:ie?.id||null,price:Number(x.unit_price||0)
+    });
+  }
+  return {order,items:availability,canFulfill};
+}
+
+async function fulfillCustomerOrder(env,user,orderId,body){
+  const preview=await orderFulfillmentPreview(env,orderId);
+  const order=preview.order;
+  if(order.status==="Completed")throw new HttpError(409,"Order is already completed.");
+  if(order.status==="Cancelled")throw new HttpError(409,"Cancelled orders cannot be fulfilled.");
+  if(!preview.canFulfill)throw new HttpError(409,"There is not enough matching inventory to fulfill the full order.");
+
+  const c=await firstCompany(env);
+  const businessId=Number(order.business_id);
+  let fulfillerId=user?.id||Number(body.fulfilledByEmployeeId)||null;
+  if(!fulfillerId)throw new HttpError(400,"Fulfilling employee is required.");
+
+  const subtotal=preview.items.reduce((a,x)=>a+(x.price*x.needed),0);
+  const total=subtotal;
+  const cutPercent=Number(order.company_cut_percent??c.default_company_cut_percent??0);
+  const cut=Math.round(total*cutPercent/100);
+  const pool=total-cut;
+
+  const sr=await env.DB.prepare(`
+    INSERT INTO sales(
+      business_id,seller_employee_id,subtotal,discount_percent,sale_total,
+      company_cut_percent,company_cut_amount,employee_pool_amount,
+      customer_name,note,status
+    ) VALUES(?,?,?,0,?,?,?,?,?,?,'Completed')
+  `).bind(
+    businessId,fulfillerId,subtotal,total,cutPercent,cut,pool,
+    order.customer_name,
+    `Fulfilled order #${order.id} · Delivery: ${order.destination_hold||""}`
+  ).run();
+  const saleId=sr.meta.last_row_id;
+
+  const contributorIds=new Set();
+  const participantIds=new Set();
+
+  // Order receiver participates automatically.
+  if(order.received_by_employee_id)participantIds.add(Number(order.received_by_employee_id));
+  participantIds.add(fulfillerId);
+  for(const id of (body.extraParticipantIds||[]).map(Number).filter(Boolean))participantIds.add(id);
+
+  for(const x of preview.items){
+    const lr=await env.DB.prepare(`
+      INSERT INTO sale_lines(
+        sale_id,item_id,condition_name,quantity,unit_price,line_total
+      ) VALUES(?,?,?,?,?,?)
+    `).bind(saleId,x.itemId,x.condition,x.needed,x.price,x.needed*x.price).run();
+    const lineId=lr.meta.last_row_id;
+
+    const {results:batches}=await env.DB.prepare(`
+      SELECT *
+      FROM stock_batches
+      WHERE business_id=? AND item_id=? AND condition_name=? AND quantity_remaining>0
+      ORDER BY id
+    `).bind(businessId,x.itemId,x.condition).all();
+
+    let need=x.needed;
+    for(const b of batches){
+      if(need<=0)break;
+      const used=Math.min(need,Number(b.quantity_remaining));
+      await env.DB.prepare(
+        "UPDATE stock_batches SET quantity_remaining=quantity_remaining-? WHERE id=?"
+      ).bind(used,b.id).run();
+
+      await env.DB.prepare(
+        "INSERT INTO sale_line_batches(sale_line_id,batch_id,quantity) VALUES(?,?,?)"
+      ).bind(lineId,b.id,used).run();
+
+      const {results:parts}=await env.DB.prepare(
+        "SELECT employee_id FROM stock_batch_participants WHERE batch_id=?"
+      ).bind(b.id).all();
+      for(const p of parts)contributorIds.add(Number(p.employee_id));
+      if(b.original_stocker_employee_id)contributorIds.add(Number(b.original_stocker_employee_id));
+      need-=used;
+    }
+    if(need>0)throw new HttpError(409,"Inventory changed during fulfillment. Try again.");
+  }
+
+  contributorIds.forEach(id=>participantIds.add(id));
+  const ids=[...participantIds].filter(Boolean);
+  const share=ids.length?Math.floor(pool/ids.length):0;
+  const extras=(body.extraParticipantIds||[]).map(Number);
+  const receiverId=Number(order.received_by_employee_id)||null;
+
+  for(const id of ids){
+    const roles=[];
+    if(id===fulfillerId)roles.push("Order Fulfiller");
+    if(id===receiverId)roles.push("Order Receiver");
+    if(contributorIds.has(id))roles.push("Stock Contributor");
+    if(extras.includes(id))roles.push("Additional");
+
+    for(const role of roles){
+      await env.DB.prepare(`
+        INSERT OR IGNORE INTO sale_participants(
+          sale_id,employee_id,role,is_auto_added,payout_amount
+        ) VALUES(?,?,?,?,?)
+      `).bind(
+        saleId,id,role,
+        (role==="Stock Contributor"||role==="Order Receiver")?1:0,
+        share
+      ).run();
+
+      await env.DB.prepare(`
+        INSERT OR IGNORE INTO customer_order_participants(
+          order_id,employee_id,role,payout_amount
+        ) VALUES(?,?,?,?)
+      `).bind(order.id,id,role,share).run();
+    }
+
+    await env.DB.prepare(`
+      UPDATE employees
+      SET lifetime_earnings=lifetime_earnings+?,updated_at=CURRENT_TIMESTAMP
+      WHERE id=?
+    `).bind(share,id).run();
+  }
+
+  if(cut){
+    await env.DB.prepare(`
+      INSERT INTO coffer_transactions(
+        company_id,business_id,transaction_type,amount,
+        reference_type,reference_id,performed_by_employee_id,note
+      ) VALUES(?,?, 'ORDER_COMPANY_CUT', ?, 'ORDER', ?, ?, ?)
+    `).bind(
+      c.id,businessId,cut,order.id,fulfillerId,
+      `Completed order #${order.id}`
+    ).run();
+  }
+
+  await env.DB.prepare(`
+    UPDATE customer_orders
+    SET status='Completed',completed_at=CURRENT_TIMESTAMP,sale_id=?
+    WHERE id=?
+  `).bind(saleId,order.id).run();
+
+  return {saleId,share,total,cut,participantIds:ids};
+}
+
+
 export default {
   async fetch(request,env) {
     const url=new URL(request.url);
@@ -1093,6 +1438,47 @@ export default {
         if(user)body.sellerId=user.id;
         await createSale(env,body);
         return json(await getAuthorizedCore(env,user));
+      }
+
+      if(url.pathname==="/api/orders"&&request.method==="POST"){
+        const body=await readJson(request);
+        await requireBusinessPermission(env,user,body.businessId,"orders");
+        const orderId=await createCustomerOrder(env,user,body);
+        return json({ok:true,orderId,core:await getAuthorizedCore(env,user)});
+      }
+
+      match=url.pathname.match(/^\/api\/orders\/(\d+)\/status$/);
+      if(match&&request.method==="PATCH"){
+        const order=await env.DB.prepare(
+          "SELECT business_id FROM customer_orders WHERE id=?"
+        ).bind(Number(match[1])).first();
+        if(!order)throw new HttpError(404,"Order not found.");
+        await requireBusinessPermission(env,user,order.business_id,"orders");
+        const body=await readJson(request);
+        await updateOrderStatus(env,Number(match[1]),String(body.status||""));
+        return json(await getAuthorizedCore(env,user));
+      }
+
+      match=url.pathname.match(/^\/api\/orders\/(\d+)\/preview$/);
+      if(match&&request.method==="GET"){
+        const order=await env.DB.prepare(
+          "SELECT business_id FROM customer_orders WHERE id=?"
+        ).bind(Number(match[1])).first();
+        if(!order)throw new HttpError(404,"Order not found.");
+        await requireBusinessPermission(env,user,order.business_id,"orders");
+        return json(await orderFulfillmentPreview(env,Number(match[1])));
+      }
+
+      match=url.pathname.match(/^\/api\/orders\/(\d+)\/fulfill$/);
+      if(match&&request.method==="POST"){
+        const order=await env.DB.prepare(
+          "SELECT business_id FROM customer_orders WHERE id=?"
+        ).bind(Number(match[1])).first();
+        if(!order)throw new HttpError(404,"Order not found.");
+        await requireBusinessPermission(env,user,order.business_id,"orders");
+        const body=await readJson(request);
+        const receipt=await fulfillCustomerOrder(env,user,Number(match[1]),body);
+        return json({ok:true,receipt,core:await getAuthorizedCore(env,user)});
       }
 
       if(url.pathname.startsWith("/api/"))

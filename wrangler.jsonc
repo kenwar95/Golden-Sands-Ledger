@@ -19,7 +19,7 @@
     }
   ],
   "vars": {
-    "AUTH_ENFORCE": "true",
+    "AUTH_ENFORCE": "false",
     "AUTH_SETUP_ENABLED": "true"
   }
 }

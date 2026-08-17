@@ -22,7 +22,7 @@ const seed={
 let state=JSON.parse(localStorage.getItem('gsl-phase4')||'null')||structuredClone(seed);(state.inventory||[]).forEach(item=>(item.batches||[]).forEach(batch=>{const legacy=[batch.contributorId,batch.transferById].filter(Boolean);batch.participantIds=[...new Set([...(batch.participantIds||[]),...legacy])];if(!batch.contributorId&&batch.participantIds.length)batch.contributorId=batch.participantIds[0]}));let cart=[],currentView='company';let authState={enforced:false,setupEnabled:true,needsOwnerSetup:false,user:null,permissions:{},allowedBusinessIds:null};
 const $=s=>document.querySelector(s),app=$('#app');
 const permissionLabels={register:'Use Register',inventory_view:'View Inventory',inventory_edit:'Edit Inventory',orders:'Create / Complete Orders',transfers:'Transfer Stock',suppliers:'Manage Suppliers',notebook:'Use Notebook',tasks:'Use Tasks',coffers:'View Coffers',coffers_edit:'Modify Coffers',employees:'Manage Employees',permissions:'Change Permissions'};
-const navGroups=[['Company',[['company','◈','Company Overview'],['businesses','⌂','Businesses']]],['Current Business',[['dashboard','⌂','Dashboard'],['register','✦','Register'],['inventory','▦','Inventory'],['transfers','⇄','Transfers']]],['Caravan',[['notebook','✎','Notebook'],['employees','♟','Employees']]],['Accounting',[['coffers','◈','Coffers'],['history','≡','Sales History'],['earnings','¤','Employee Earnings']]],['Administration',[['permissions','⚙','Permissions'],['settings','☼','Settings']]]];
+const navGroups=[['Company',[['company','◈','Company Overview'],['businesses','⌂','Businesses']]],['Current Business',[['dashboard','⌂','Dashboard'],['register','✦','Register'],['orders','◇','Orders'],['inventory','▦','Inventory'],['transfers','⇄','Transfers']]],['Caravan',[['notebook','✎','Notebook'],['employees','♟','Employees']]],['Accounting',[['coffers','◈','Coffers'],['history','≡','Sales History'],['earnings','¤','Employee Earnings']]],['Administration',[['permissions','⚙','Permissions'],['settings','☼','Settings']]]];
 function save(){localStorage.setItem('gsl-phase4',JSON.stringify(state))}function money(n){return Number(n||0).toLocaleString()+' septims'}function activeBusiness(){return state.businesses.find(b=>String(b.id)===String(state.activeBusinessId))||state.businesses[0]}function inv(){return state.inventory.filter(i=>String(i.businessId)===String(state.activeBusinessId))}function empName(id){return state.employees.find(e=>e.id===id)?.name||'Unknown'}function bizName(id){return state.businesses.find(b=>b.id===id)?.name||id}function eligibleEmployees(bid=state.activeBusinessId){return state.employees.filter(e=>e.assignments?.[bid]?.enabled)}function now(){return new Date().toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}
 async function api(path,options={}){
   const res=await fetch(path,{
@@ -182,7 +182,7 @@ function renderAuthControls(){
 function allowedNav(view){
   if(!authState.enforced&&!authState.user)return true;
   if(authState.user?.isOwner)return true;
-  const map={company:true,businesses:can('businesses'),dashboard:true,register:can('register'),inventory:can('inventory_view')||can('inventory_edit'),transfers:can('transfers'),notebook:can('notebook'),employees:can('employees'),coffers:can('coffers'),history:can('register')||can('coffers'),earnings:can('employees')||can('coffers'),permissions:can('permissions'),settings:can('settings')};
+  const map={company:true,businesses:can('businesses'),dashboard:true,register:can('register'),orders:can('orders'),inventory:can('inventory_view')||can('inventory_edit'),transfers:can('transfers'),notebook:can('notebook'),employees:can('employees'),coffers:can('coffers'),history:can('register')||can('coffers'),earnings:can('employees')||can('coffers'),permissions:can('permissions'),settings:can('settings')};
   return !!map[view];
 }
 
@@ -233,7 +233,7 @@ function buildNav(){$('#nav').innerHTML=navGroups.map(([g,items])=>{const visibl
 function buildBusinessSelect(){const s=$('#businessSelect');const actives=state.businesses.filter(b=>b.status==='Active');if(!actives.some(b=>String(b.id)===String(state.activeBusinessId))&&actives[0])state.activeBusinessId=actives[0].id;s.innerHTML=actives.map(b=>`<option value="${b.id}" ${String(b.id)===String(state.activeBusinessId)?'selected':''}>${b.name}</option>`).join('');$('#businessLocation').textContent=`${activeBusiness().hold} · ${activeBusiness().location}`;s.onchange=()=>{const selected=state.businesses.find(b=>String(b.id)===String(s.value));state.activeBusinessId=selected?selected.id:s.value;save();buildBusinessSelect();render();renderNotebookPreview()}}
 function renderNotebookPreview(){const ns=state.notes.filter(n=>String(n.businessId)===String(state.activeBusinessId)).slice(0,3);$('#notebookPreview').innerHTML=ns.length?ns.map(n=>`<div class="note-preview"><strong>${n.author}</strong><time>${n.date}</time><p>${n.text}</p></div>`).join(''):'<div class="empty">No notes.</div>'}
 function go(v){if(!allowedNav(v))return alert('You do not have permission to open that section.');currentView=v;buildNav();render();closeNav()}window.go=go;function closeNav(){$('#sidebar').classList.remove('open');$('#backdrop').classList.remove('show')}$('#navToggle').onclick=()=>{$('#sidebar').classList.toggle('open');$('#backdrop').classList.toggle('show')};$('#backdrop').onclick=closeNav;
-function render(){({company,businesses,dashboard,register,inventory,transfers,notebook,employees,coffers,history,earnings,permissions,settings}[currentView])();renderNotebookPreview()}
+function render(){({company,businesses,dashboard,register,orders,inventory,transfers,notebook,employees,coffers,history,earnings,permissions,settings}[currentView])();renderNotebookPreview()}
 function company(){setHead('Company Overview','Golden Sands Trading Company');app.innerHTML=`<div class="grid g4">${stat('Company Coffers',money(state.businesses.reduce((a,b)=>a+b.coffers,0)),'Across all businesses')}${stat('Active Businesses',state.businesses.filter(b=>b.status==='Active').length,'Currently operating','⌂')}${stat('Employees',state.employees.length,'Company members','♟')}${stat('Inventory Units',state.inventory.reduce((a,b)=>a+b.qty,0),'Across all businesses','▦')}</div>`}
 function businesses(){setHead('Businesses','Company Structure');$('#pageActions').innerHTML='<button class="btn" onclick="addBusiness()">+ Add Business</button>';app.innerHTML=`<div class="business-grid">${state.businesses.map(b=>`<div class="business-card"><span class="eyebrow">${b.type}</span><h3>${b.name}</h3><p><strong>Status:</strong> ${b.status}<br><strong>Hold:</strong> ${b.hold}<br><strong>Location:</strong> ${b.location}<br>${b.description}</p><div class="quick"><button class="btn secondary" onclick="switchBusiness('${b.id}')">Open</button><button class="btn ghost" onclick="editBusiness('${b.id}')">Edit</button></div></div>`).join('')}</div>`}
 window.switchBusiness=id=>{const selected=state.businesses.find(b=>String(b.id)===String(id));state.activeBusinessId=selected?selected.id:id;save();buildBusinessSelect();go('dashboard')};window.addBusiness=()=>businessModal(null);window.editBusiness=id=>businessModal(state.businesses.find(b=>b.id===id));
@@ -248,6 +248,291 @@ function drawCart(){const el=$('#cart');if(!el)return;el.innerHTML=cart.length?c
 function drawReceipt(){const r=calcReceipt(),contributors=previewContributors(),sellerId=Number($('#seller')?.value||0),extras=[...document.querySelectorAll('.extraPart:checked')].map(x=>Number(x.value)),participants=[...new Set([sellerId,...contributors.map(c=>c.id),...extras].filter(Boolean))],share=participants.length?Math.floor(r.pool/participants.length):0;$('#receiptPreview').innerHTML=`<h3>${activeBusiness().name}</h3><div class="merchant">${state.company.name}</div>${cart.map(c=>`<div class="receipt-line"><span>${c.name} × ${c.qty}</span><span>${money(c.price*c.qty)}</span></div>`).join('')}<div class="receipt-line"><span>Sale Amount</span><strong>${money(r.sale)}</strong></div><div class="receipt-line"><span>Company Cut (${state.company.caravanCut}%)</span><strong>${money(r.cut)}</strong></div><div class="receipt-section"><strong>Seller</strong><div class="role-line"><span>${empName(sellerId)}</span><span>Seller</span></div></div><div class="receipt-section"><strong>Stock / Transfer Contributors</strong>${contributors.length?contributors.map(c=>`<div class="role-line"><span>${c.name}</span><span>${c.units} unit${c.units===1?'':'s'} linked</span></div>`).join(''):'<div class="role-line"><span>None detected</span><span>—</span></div>'}</div><div class="receipt-section"><strong>Additional Participants</strong>${extras.length?extras.map(id=>`<div class="role-line"><span>${empName(id)}</span><span>Added manually</span></div>`).join(''):'<div class="role-line"><span>None</span><span>—</span></div>'}</div><div class="receipt-section"><strong>Profit Split Preview</strong>${participants.map(id=>`<div class="role-line"><span>${empName(id)}</span><span>${money(share)}</span></div>`).join('')}</div><div class="receipt-total"><span>Customer Pays</span><strong>${money(r.sale)}</strong></div>`}
 function consumeBatches(item,qty){let need=qty,used=[];for(const b of item.batches){if(need<=0)break;const take=Math.min(need,b.qty);if(take>0){used.push({contributorId:b.contributorId,participantIds:[...new Set([...(b.participantIds||[]),b.contributorId].filter(Boolean))],qty:take,source:b.source});b.qty-=take;need-=take}}item.batches=item.batches.filter(b=>b.qty>0);item.qty-=qty;return used}
 window.completeSale=async()=>{if(!cart.length)return alert('Add at least one item.');const sellerId=Number($('#seller').value),discount=Math.max(0,Math.min(100,Number($('#discount').value)||0)),extras=[...document.querySelectorAll('.extraPart:checked')].map(x=>Number(x.value));await api('/api/sales',{method:'POST',body:JSON.stringify({businessId:state.activeBusinessId,sellerId,discount,companyCutPercent:state.company.caravanCut,extraParticipantIds:extras,items:cart.map(c=>({inventoryEntryId:c.id,qty:c.qty,price:c.price}))})});cart=[];await reloadCore();alert('Sale recorded in shared ledger.')}
+
+function orders(){
+  setHead('Orders','Pending Client Orders · '+activeBusiness().name);
+  $('#pageActions').innerHTML='<button class="btn" onclick="newOrder()">+ New Order</button>';
+  const rows=(state.orders||[]).filter(o=>String(o.businessId)===String(state.activeBusinessId));
+  app.innerHTML=`
+    <div class="business-grid">
+      ${rows.map(o=>`
+        <div class="business-card">
+          <span class="eyebrow">${o.status}</span>
+          <h3>${o.customerName}</h3>
+          <p>
+            <strong>Hold Delivery:</strong> ${o.holdDelivery||'—'}<br>
+            <strong>Estimated Time:</strong> ${o.estimatedTime||'—'}<br>
+            <strong>Received By:</strong> ${o.receivedByName||'Unknown'}<br>
+            <strong>Order Total:</strong> ${money(o.total)}
+          </p>
+          <div style="margin-top:10px">
+            ${(o.items||[]).map(i=>`
+              <div class="supplier-row">
+                <span>${i.name} × ${i.qty}</span>
+                <strong>${money(i.price*i.qty)}</strong>
+              </div>`).join('')}
+          </div>
+          ${o.status==='Completed'?`
+            <div class="notice" style="margin-top:10px">
+              Fulfilled${o.saleId?' · Sale #'+o.saleId:''}
+            </div>`:''}
+          <div class="quick" style="margin-top:12px">
+            ${!['Completed','Cancelled'].includes(o.status)?`
+              <button class="btn secondary" onclick="fulfillOrder(${o.id})">Fulfill Order</button>
+              <button class="btn ghost" onclick="setOrderStatus(${o.id},'In Progress')">In Progress</button>
+              <button class="btn ghost" onclick="setOrderStatus(${o.id},'Ready')">Ready</button>
+              <button class="btn ghost" onclick="setOrderStatus(${o.id},'Cancelled')">Cancel</button>
+            `:''}
+          </div>
+        </div>`).join('')||'<div class="empty">No orders for this business.</div>'}
+    </div>`;
+}
+
+let orderDraftItems=[];
+
+function orderItemRowHtml(i,index){
+  return `
+    <div class="assignment-block" style="margin-bottom:10px">
+      <div class="assignment-head">
+        <strong>${i.name}</strong>
+        <button class="small-link" type="button" onclick="removeOrderDraftItem(${index})">Remove</button>
+      </div>
+      <div class="form-grid">
+        <div class="field">
+          <label>Quantity Needed</label>
+          <input class="input orderDraftQty" data-index="${index}" type="number" min="1" value="${i.qty||1}">
+        </div>
+        <div class="field">
+          <label>Negotiated Unit Price</label>
+          <input class="input orderDraftPrice" data-index="${index}" type="number" min="0" value="${i.price||0}">
+        </div>
+      </div>
+    </div>`;
+}
+
+function redrawOrderDraft(){
+  const host=$('#orderDraftItems');
+  if(!host)return;
+  host.innerHTML=orderDraftItems.map(orderItemRowHtml).join('')||'<div class="empty">No items added yet.</div>';
+}
+
+window.removeOrderDraftItem=index=>{
+  orderDraftItems.splice(index,1);
+  redrawOrderDraft();
+};
+
+window.addInventoryItemToOrder=()=>{
+  const id=Number($('#orderInventoryPick')?.value);
+  const item=state.inventory.find(x=>x.id===id);
+  if(!item)return;
+  orderDraftItems.push({
+    itemId:item.itemId,
+    inventoryEntryId:item.id,
+    name:item.name,
+    category:item.category||'Misc',
+    condition:item.condition||'Standard',
+    qty:1,
+    price:item.price||0
+  });
+  redrawOrderDraft();
+};
+
+window.addCustomItemToOrder=()=>{
+  const name=$('#customOrderItemName')?.value.trim();
+  if(!name)return alert('Enter the custom item name.');
+  orderDraftItems.push({
+    itemId:null,
+    inventoryEntryId:null,
+    name,
+    category:'Misc',
+    condition:'Standard',
+    qty:Math.max(1,Number($('#customOrderItemQty')?.value)||1),
+    price:Math.max(0,Number($('#customOrderItemPrice')?.value)||0)
+  });
+  $('#customOrderItemName').value='';
+  $('#customOrderItemQty').value='1';
+  $('#customOrderItemPrice').value='0';
+  redrawOrderDraft();
+};
+
+window.newOrder=()=>{
+  orderDraftItems=[];
+  const es=eligibleEmployees();
+  modal('Create Pending Order',`
+    <div class="form-grid">
+      <div class="field">
+        <label>Name</label>
+        <input id="orderCustomerName" class="input">
+      </div>
+      <div class="field">
+        <label>Hold Delivery</label>
+        <input id="orderHold" class="input">
+      </div>
+      <div class="field">
+        <label>Estimated Time</label>
+        <input id="orderEstimatedTime" class="input" placeholder="Example: 2 days / tomorrow evening">
+      </div>
+      <div class="field">
+        <label>Employee That Received Order</label>
+        <select id="orderReceiver" class="select">
+          ${es.map(e=>`<option value="${e.id}">${e.name}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <h3>Add From Current Inventory</h3>
+      <div class="form-grid">
+        <div class="field span2">
+          <label>Item</label>
+          <select id="orderInventoryPick" class="select">
+            ${inv().map(i=>`<option value="${i.id}">${i.name} · ${i.condition} · ${i.qty} in stock</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <button class="btn secondary" type="button" onclick="addInventoryItemToOrder()">Add Selected Item</button>
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <h3>Create Custom Order Item</h3>
+      <div class="form-grid">
+        <div class="field span2">
+          <label>Item Name</label>
+          <input id="customOrderItemName" class="input">
+        </div>
+        <div class="field">
+          <label>Quantity Needed</label>
+          <input id="customOrderItemQty" type="number" min="1" value="1" class="input">
+        </div>
+        <div class="field">
+          <label>Negotiated Unit Price</label>
+          <input id="customOrderItemPrice" type="number" min="0" value="0" class="input">
+        </div>
+      </div>
+      <button class="btn secondary" type="button" onclick="addCustomItemToOrder()">Add Custom Item</button>
+    </div>
+
+    <div style="margin-top:14px">
+      <h3>Order Items</h3>
+      <div id="orderDraftItems"><div class="empty">No items added yet.</div></div>
+    </div>
+  `,async()=>{
+    document.querySelectorAll('.orderDraftQty').forEach(el=>{
+      const i=Number(el.dataset.index); if(orderDraftItems[i])orderDraftItems[i].qty=Math.max(1,Number(el.value)||1);
+    });
+    document.querySelectorAll('.orderDraftPrice').forEach(el=>{
+      const i=Number(el.dataset.index); if(orderDraftItems[i])orderDraftItems[i].price=Math.max(0,Number(el.value)||0);
+    });
+
+    const customerName=$('#orderCustomerName').value.trim();
+    const holdDelivery=$('#orderHold').value.trim();
+    const estimatedTime=$('#orderEstimatedTime').value.trim();
+    if(!customerName||!holdDelivery||!estimatedTime)return alert('Complete Name, Hold Delivery, and Estimated Time.');
+    if(!orderDraftItems.length)return alert('Add at least one item.');
+
+    await api('/api/orders',{
+      method:'POST',
+      body:JSON.stringify({
+        businessId:state.activeBusinessId,
+        customerName,
+        holdDelivery,
+        estimatedTime,
+        receivedByEmployeeId:Number($('#orderReceiver').value),
+        items:orderDraftItems
+      })
+    });
+    closeModal();
+    await reloadCore();
+    go('orders');
+  });
+};
+
+window.setOrderStatus=async(id,status)=>{
+  await api('/api/orders/'+id+'/status',{
+    method:'PATCH',
+    body:JSON.stringify({status})
+  });
+  await reloadCore();
+  go('orders');
+};
+
+window.fulfillOrder=async id=>{
+  let preview;
+  try{
+    preview=await api('/api/orders/'+id+'/preview');
+  }catch(err){return alert(err.message)}
+
+  const order=(state.orders||[]).find(o=>o.id===id);
+  const es=eligibleEmployees();
+
+  modal('Fulfill Order',`
+    <div class="notice">
+      <strong>${order?.customerName||'Client'}</strong><br>
+      Delivery: ${order?.holdDelivery||'—'}<br>
+      Negotiated Total: ${money(order?.total||0)}
+    </div>
+
+    <div style="margin-top:14px">
+      <h3>Inventory Check</h3>
+      ${preview.items.map(i=>`
+        <div class="supplier-row">
+          <span>${i.name} × ${i.needed}</span>
+          <strong>${i.available} available ${i.available>=i.needed?'✓':'✗'}</strong>
+        </div>`).join('')}
+    </div>
+
+    ${preview.canFulfill?`
+      <div class="field" style="margin-top:14px">
+        <label>Additional Participants</label>
+        <div class="permission-grid">
+          ${es.map(e=>`<label class="perm"><input class="orderExtraPart" type="checkbox" value="${e.id}"> ${e.name}</label>`).join('')}
+        </div>
+      </div>
+      <div class="receipt" style="margin-top:14px">
+        <h3>${activeBusiness().name}</h3>
+        <div class="merchant">${state.company.name}</div>
+        ${(order?.items||[]).map(i=>`
+          <div class="receipt-line">
+            <span>${i.name} × ${i.qty}</span>
+            <span>${money(i.price*i.qty)}</span>
+          </div>`).join('')}
+        <div class="receipt-line">
+          <span>Order Total</span>
+          <strong>${money(order?.total||0)}</strong>
+        </div>
+        <div class="receipt-line">
+          <span>Company Cut (${state.company.caravanCut}%)</span>
+          <strong>${money(Math.round((order?.total||0)*state.company.caravanCut/100))}</strong>
+        </div>
+        <div class="receipt-section">
+          <strong>Order Receiver</strong>
+          <div class="role-line"><span>${order?.receivedByName||'Unknown'}</span><span>Auto included</span></div>
+        </div>
+        <div class="receipt-section">
+          <strong>Fulfilling Employee</strong>
+          <div class="role-line"><span>${authState.user?.name||'Current User'}</span><span>Auto included</span></div>
+        </div>
+        <div class="receipt-section">
+          <strong>Stock / Transfer Contributors</strong>
+          <div class="role-line"><span>Calculated from consumed inventory batches</span><span>Auto included</span></div>
+        </div>
+      </div>
+    `:`<div class="notice" style="margin-top:14px"><strong>Cannot fulfill yet.</strong><br>The business does not have enough matching inventory for the full order.</div>`}
+  `,async()=>{
+    if(!preview.canFulfill)return;
+    const extraParticipantIds=[...document.querySelectorAll('.orderExtraPart:checked')].map(x=>Number(x.value));
+    const result=await api('/api/orders/'+id+'/fulfill',{
+      method:'POST',
+      body:JSON.stringify({extraParticipantIds})
+    });
+    closeModal();
+    await reloadCore();
+    alert(`Order fulfilled.\\nSale: ${money(result.receipt.total)}\\nCompany cut: ${money(result.receipt.cut)}\\nEach participant: ${money(result.receipt.share)}`);
+    go('orders');
+  });
+};
+
+
 function inventory(){setHead('Inventory',activeBusiness().name);$('#pageActions').innerHTML='<button class="btn" onclick="stockIntake()">+ Stock Intake</button><button class="btn ghost" onclick="addItem()">+ New Item</button>';app.innerHTML=`<div class="card">${table(['Item','Condition','Qty','Price','Stock Provenance'],inv().map(i=>`<tr><td><strong>${i.name}</strong></td><td>${i.condition}</td><td>${i.qty}</td><td>${money(i.price)}</td><td>${i.batches.map(b=>`${b.qty} · ${[...new Set([...(b.participantIds||[]),b.contributorId].filter(Boolean))].map(empName).join(' → ')}`).join(' · ')||'—'}</td></tr>`))}</div>`}
 window.addItem=()=>modal('Add New Item',`<div class="form-grid"><div class="field span2"><label>Item Name</label><input id="iName" class="input"></div><div class="field"><label>Category</label><input id="iCat" class="input"></div><div class="field"><label>Condition</label><input id="iCond" class="input" value="Standard"></div><div class="field"><label>Sale Price</label><input id="iPrice" type="number" class="input" value="0"></div></div>`,async()=>{if(!$('#iName').value.trim())return;await api('/api/inventory',{method:'POST',body:JSON.stringify({businessId:state.activeBusinessId,name:$('#iName').value.trim(),category:$('#iCat').value||'Misc',condition:$('#iCond').value||'Standard',price:Number($('#iPrice').value)||0})});closeModal();await reloadCore()})
 window.stockIntake=()=>modal('Stock Intake',`<div class="form-grid"><div class="field span2"><label>Item</label><select id="siItem" class="select">${inv().map(i=>`<option value="${i.id}">${i.name} — ${i.condition}</option>`).join('')}</select></div><div class="field"><label>Quantity</label><input id="siQty" type="number" class="input" value="1"></div><div class="field"><label>Employee Adding Stock</label><select id="siEmp" class="select">${eligibleEmployees().map(e=>`<option value="${e.id}">${e.name}</option>`).join('')}</select></div><div class="field span2"><label>Source / Note</label><input id="siSource" class="input" value="Stock Intake"></div></div>`,async()=>{await api('/api/stock-intake',{method:'POST',body:JSON.stringify({inventoryEntryId:Number($('#siItem').value),qty:Math.max(1,Number($('#siQty').value)||1),employeeId:Number($('#siEmp').value),source:$('#siSource').value||'Stock Intake'})});closeModal();await reloadCore()})
