@@ -19,7 +19,7 @@ const seed={
  notes:[{id:1,author:"Ra'zirr",date:'16th of Last Seed',businessId:'caravan',text:'A hunter near Whiterun claims he will have ten wolf pelts tomorrow.',pinned:true}],
  history:[],transfers:[]
 };
-let state=JSON.parse(localStorage.getItem('gsl-phase4')||'null')||structuredClone(seed);(state.inventory||[]).forEach(item=>(item.batches||[]).forEach(batch=>{const legacy=[batch.contributorId,batch.transferById].filter(Boolean);batch.participantIds=[...new Set([...(batch.participantIds||[]),...legacy])];if(!batch.contributorId&&batch.participantIds.length)batch.contributorId=batch.participantIds[0]}));let cart=[],currentView='company';
+let state=JSON.parse(localStorage.getItem('gsl-phase4')||'null')||structuredClone(seed);(state.inventory||[]).forEach(item=>(item.batches||[]).forEach(batch=>{const legacy=[batch.contributorId,batch.transferById].filter(Boolean);batch.participantIds=[...new Set([...(batch.participantIds||[]),...legacy])];if(!batch.contributorId&&batch.participantIds.length)batch.contributorId=batch.participantIds[0]}));let cart=[],currentView='company';let authState={enforced:false,setupEnabled:true,needsOwnerSetup:false,user:null,permissions:{},allowedBusinessIds:null};
 const $=s=>document.querySelector(s),app=$('#app');
 const permissionLabels={register:'Use Register',inventory_view:'View Inventory',inventory_edit:'Edit Inventory',orders:'Create / Complete Orders',transfers:'Transfer Stock',suppliers:'Manage Suppliers',notebook:'Use Notebook',tasks:'Use Tasks',coffers:'View Coffers',coffers_edit:'Modify Coffers',employees:'Manage Employees',permissions:'Change Permissions'};
 const navGroups=[['Company',[['company','◈','Company Overview'],['businesses','⌂','Businesses']]],['Current Business',[['dashboard','⌂','Dashboard'],['register','✦','Register'],['inventory','▦','Inventory'],['transfers','⇄','Transfers']]],['Caravan',[['notebook','✎','Notebook'],['employees','♟','Employees']]],['Accounting',[['coffers','◈','Coffers'],['history','≡','Sales History'],['earnings','¤','Employee Earnings']]],['Administration',[['permissions','⚙','Permissions'],['settings','☼','Settings']]]];
@@ -33,6 +33,61 @@ async function api(path,options={}){
   if(!res.ok)throw new Error(data.error||data.reason||`API ${res.status}`);
   return data;
 }
+async function refreshAuth(){
+  try{authState={...authState,...await api('/api/auth/me')}}
+  catch(err){console.error(err)}
+  renderAuthControls();
+  return authState;
+}
+function permissionList(bid=state.activeBusinessId){
+  if(authState.user?.isOwner)return ['all'];
+  return authState.permissions?.[bid]||authState.permissions?.[String(bid)]||[];
+}
+function can(perm,bid=state.activeBusinessId){
+  if(!authState.enforced&&!authState.user)return true;
+  if(authState.user?.isOwner)return true;
+  return permissionList(bid).includes(perm);
+}
+async function nativeLogin(){
+  const email=$('#loginEmail')?.value.trim(),password=$('#loginPassword')?.value||'';
+  try{
+    await api('/api/auth/login',{method:'POST',body:JSON.stringify({email,password})});
+    location.reload();
+  }catch(err){alert(err.message)}
+}
+async function signOutLedger(){
+  await api('/api/auth/logout',{method:'POST',body:'{}'});
+  location.reload();
+}
+async function changeMyPassword(){
+  modal('Change Password',`<div class="form-grid"><div class="field span2"><label>Current Password</label><input id="cpCurrent" type="password" class="input"></div><div class="field span2"><label>New Password</label><input id="cpNew" type="password" class="input"></div></div>`,async()=>{
+    try{
+      await api('/api/auth/change-password',{method:'POST',body:JSON.stringify({currentPassword:$('#cpCurrent').value,newPassword:$('#cpNew').value})});
+      alert('Password changed. Please sign in again.');
+      await signOutLedger();
+    }catch(err){alert(err.message)}
+  });
+}
+function showNativeLogin(required=true){
+  $('#modalRoot').innerHTML=`<div class="modal-backdrop"><div class="modal" style="max-width:430px"><h3>Sign in to ${state.company?.name||'the Ledger'}</h3><div class="form-grid"><div class="field span2"><label>Email</label><input id="loginEmail" class="input" type="email" autocomplete="username"></div><div class="field span2"><label>Password</label><input id="loginPassword" class="input" type="password" autocomplete="current-password"></div></div><div class="modal-actions">${required?'':'<button class="btn ghost" onclick="closeModal()">Cancel</button>'}<button class="btn" onclick="nativeLogin()">Sign In</button></div></div></div>`;
+}
+function renderAuthControls(){
+  const right=document.querySelector('.topbar-right');if(!right)return;
+  let a=document.getElementById('authControls');
+  if(!a){a=document.createElement('div');a.id='authControls';a.style.cssText='display:flex;gap:8px;align-items:center;margin-left:12px';right.appendChild(a)}
+  if(authState.user){
+    a.innerHTML=`<span style="font-size:12px;opacity:.85">${authState.user.name} · ${authState.user.role}</span><button class="small-link" onclick="changeMyPassword()">Password</button><button class="small-link" onclick="signOutLedger()">Sign out</button>`;
+  }else{
+    a.innerHTML=`<button class="small-link" onclick="showNativeLogin(false)">Sign in</button>`;
+  }
+}
+function allowedNav(view){
+  if(!authState.enforced&&!authState.user)return true;
+  if(authState.user?.isOwner)return true;
+  const map={company:true,businesses:can('businesses'),dashboard:true,register:can('register'),inventory:can('inventory_view')||can('inventory_edit'),transfers:can('transfers'),notebook:can('notebook'),employees:can('employees'),coffers:can('coffers'),history:can('register')||can('coffers'),earnings:can('employees')||can('coffers'),permissions:can('permissions'),settings:can('settings')};
+  return !!map[view];
+}
+
 function mergeCore(serverState){
   const current=state.activeBusinessId;
   state={...state,...serverState};
@@ -55,8 +110,8 @@ function remapLocalIds(maps){
 }
 async function reloadCore(){
   const r=await api('/api/core');
-  if(r.initialized)mergeCore(r.state);
-  buildBusinessSelect();applyBranding();render();
+  if(r.initialized){mergeCore(r.state);if(r.auth)authState={...authState,...r.auth};}
+  buildBusinessSelect();applyBranding();renderAuthControls();buildNav();render();
 }
 async function initSharedData(){
   try{
@@ -67,7 +122,7 @@ async function initSharedData(){
       localStorage.setItem('gsl-phase4',JSON.stringify(state));
       r=await api('/api/core');
     }
-    if(r.initialized)mergeCore(r.state);
+    if(r.initialized){mergeCore(r.state);if(r.auth)authState={...authState,...r.auth};}
   }catch(err){
     console.error('Shared D1 initialization failed:',err);
     alert('Shared database connection failed. The ledger is using the browser copy for now.');
@@ -76,10 +131,10 @@ async function initSharedData(){
 }
 
 function setHead(t,e){$('#pageTitle').textContent=t;$('#eyebrow').textContent=e||activeBusiness().name;$('#pageActions').innerHTML=''}function stat(l,v,s,i='◈'){return `<div class="card stat"><span class="sigil">${i}</span><div class="label">${l}</div><div class="value">${v}</div><div class="sub">${s}</div></div>`}function table(h,r){return `<div class="table-wrap"><table><thead><tr>${h.map(x=>`<th>${x}</th>`).join('')}</tr></thead><tbody>${r.join('')}</tbody></table></div>`}
-function buildNav(){$('#nav').innerHTML=navGroups.map(([g,items])=>`<div class="nav-group-title">${g}</div>${items.map(([v,i,l])=>`<button class="nav-item ${currentView===v?'active':''}" data-view="${v}"><span>${i}</span>${l}</button>`).join('')}`).join('');document.querySelectorAll('.nav-item').forEach(b=>b.onclick=()=>go(b.dataset.view))}
+function buildNav(){$('#nav').innerHTML=navGroups.map(([g,items])=>{const visible=items.filter(([v])=>allowedNav(v));return visible.length?`<div class="nav-group-title">${g}</div>${visible.map(([v,i,l])=>`<button class="nav-item ${currentView===v?'active':''}" data-view="${v}"><span>${i}</span>${l}</button>`).join('')}`:''}).join('');document.querySelectorAll('.nav-item').forEach(b=>b.onclick=()=>go(b.dataset.view))}
 function buildBusinessSelect(){const s=$('#businessSelect');const actives=state.businesses.filter(b=>b.status==='Active');if(!actives.some(b=>String(b.id)===String(state.activeBusinessId))&&actives[0])state.activeBusinessId=actives[0].id;s.innerHTML=actives.map(b=>`<option value="${b.id}" ${String(b.id)===String(state.activeBusinessId)?'selected':''}>${b.name}</option>`).join('');$('#businessLocation').textContent=`${activeBusiness().hold} · ${activeBusiness().location}`;s.onchange=()=>{const selected=state.businesses.find(b=>String(b.id)===String(s.value));state.activeBusinessId=selected?selected.id:s.value;save();buildBusinessSelect();render();renderNotebookPreview()}}
 function renderNotebookPreview(){const ns=state.notes.filter(n=>String(n.businessId)===String(state.activeBusinessId)).slice(0,3);$('#notebookPreview').innerHTML=ns.length?ns.map(n=>`<div class="note-preview"><strong>${n.author}</strong><time>${n.date}</time><p>${n.text}</p></div>`).join(''):'<div class="empty">No notes.</div>'}
-function go(v){currentView=v;buildNav();render();closeNav()}window.go=go;function closeNav(){$('#sidebar').classList.remove('open');$('#backdrop').classList.remove('show')}$('#navToggle').onclick=()=>{$('#sidebar').classList.toggle('open');$('#backdrop').classList.toggle('show')};$('#backdrop').onclick=closeNav;
+function go(v){if(!allowedNav(v))return alert('You do not have permission to open that section.');currentView=v;buildNav();render();closeNav()}window.go=go;function closeNav(){$('#sidebar').classList.remove('open');$('#backdrop').classList.remove('show')}$('#navToggle').onclick=()=>{$('#sidebar').classList.toggle('open');$('#backdrop').classList.toggle('show')};$('#backdrop').onclick=closeNav;
 function render(){({company,businesses,dashboard,register,inventory,transfers,notebook,employees,coffers,history,earnings,permissions,settings}[currentView])();renderNotebookPreview()}
 function company(){setHead('Company Overview','Golden Sands Trading Company');app.innerHTML=`<div class="grid g4">${stat('Company Coffers',money(state.businesses.reduce((a,b)=>a+b.coffers,0)),'Across all businesses')}${stat('Active Businesses',state.businesses.filter(b=>b.status==='Active').length,'Currently operating','⌂')}${stat('Employees',state.employees.length,'Company members','♟')}${stat('Inventory Units',state.inventory.reduce((a,b)=>a+b.qty,0),'Across all businesses','▦')}</div>`}
 function businesses(){setHead('Businesses','Company Structure');$('#pageActions').innerHTML='<button class="btn" onclick="addBusiness()">+ Add Business</button>';app.innerHTML=`<div class="business-grid">${state.businesses.map(b=>`<div class="business-card"><span class="eyebrow">${b.type}</span><h3>${b.name}</h3><p><strong>Status:</strong> ${b.status}<br><strong>Hold:</strong> ${b.hold}<br><strong>Location:</strong> ${b.location}<br>${b.description}</p><div class="quick"><button class="btn secondary" onclick="switchBusiness('${b.id}')">Open</button><button class="btn ghost" onclick="editBusiness('${b.id}')">Edit</button></div></div>`).join('')}</div>`}
@@ -102,8 +157,8 @@ function transfers(){setHead('Transfers','Inter-Business Stock');$('#pageActions
 window.newTransfer=()=>modal('Transfer Stock',`<div class="form-grid"><div class="field span2"><label>Item</label><select id="trItem" class="select">${inv().map(i=>`<option value="${i.id}">${i.name} (${i.qty})</option>`).join('')}</select></div><div class="field"><label>Quantity</label><input id="trQty" type="number" class="input" value="1"></div><div class="field"><label>Destination</label><select id="trDest" class="select">${state.businesses.filter(b=>b.id!==state.activeBusinessId&&b.status==='Active').map(b=>`<option value="${b.id}">${b.name}</option>`).join('')}</select></div><div class="field span2"><label>Employee Making Transfer</label><select id="trEmp" class="select">${eligibleEmployees().map(e=>`<option value="${e.id}">${e.name}</option>`).join('')}</select></div></div>`,async()=>{await api('/api/transfers',{method:'POST',body:JSON.stringify({inventoryEntryId:Number($('#trItem').value),qty:Math.max(1,Number($('#trQty').value)||1),toBusinessId:Number($('#trDest').value),employeeId:Number($('#trEmp').value)})});closeModal();await reloadCore()})
 function notebook(){setHead('Caravan Notebook','In-Character Notices');$('#pageActions').innerHTML='<button class="btn" onclick="newNote()">+ Write Note</button>';app.innerHTML=`<div class="grid g2">${state.notes.filter(n=>String(n.businessId)===String(state.activeBusinessId)).map(n=>`<div class="scroll-card"><span class="eyebrow">${n.date}</span><h3>${n.author}</h3><p>${n.text}</p></div>`).join('')||'<div class="empty">No notes.</div>'}</div>`}window.newNote=()=>modal('Write Note','<div class="field"><label>Notice</label><textarea id="nText" class="textarea"></textarea></div>',async()=>{const text=$('#nText').value.trim();if(!text)return;const author=eligibleEmployees()[0]||state.employees[0];await api('/api/notebook',{method:'POST',body:JSON.stringify({businessId:state.activeBusinessId,employeeId:author?.id||null,text,pinned:false})});closeModal();await reloadCore()})
 function employees(){setHead('Employees','Company Staff');$('#pageActions').innerHTML='<button class="btn" onclick="addEmployee()">+ Employee</button>';app.innerHTML=`<div class="business-grid">${state.employees.map(e=>`<div class="business-card"><span class="eyebrow">${e.role}</span><h3>${e.name}</h3><p>${e.email}</p>${state.businesses.map(b=>`<div class="supplier-row"><span>${b.name}</span><strong>${e.assignments?.[b.id]?.enabled?'Allowed':'No Access'}</strong></div>`).join('')}<div class="quick" style="margin-top:10px"><button class="btn ghost" onclick="editEmployee(${e.id})">Edit Access</button></div></div>`).join('')}</div>`}
-window.addEmployee=()=>modal('Add Employee','<div class="form-grid"><div class="field"><label>Name</label><input id="eName" class="input"></div><div class="field"><label>Google Email</label><input id="eEmail" class="input"></div><div class="field span2"><label>Role</label><input id="eRole" class="input" value="Merchant"></div></div>',async()=>{if(!$('#eName').value.trim()||!$('#eEmail').value.trim())return;await api('/api/employees',{method:'POST',body:JSON.stringify({name:$('#eName').value.trim(),email:$('#eEmail').value.trim(),role:$('#eRole').value||'Merchant'})});closeModal();await reloadCore()})
-window.editEmployee=id=>{const e=state.employees.find(x=>x.id===id);modal('Edit Employee Business Access',`<div class="grid g2">${state.businesses.map(b=>`<div class="assignment-block"><div class="assignment-head"><strong>${b.name}</strong><label><input class="bizEnabled" data-biz="${b.id}" type="checkbox" ${e.assignments?.[b.id]?.enabled?'checked':''}> Can Work Here</label></div><div class="permission-grid">${Object.entries(permissionLabels).map(([k,l])=>`<label class="perm"><input class="bizPerm" data-biz="${b.id}" data-perm="${k}" type="checkbox" ${e.assignments?.[b.id]?.permissions?.includes(k)||e.assignments?.[b.id]?.permissions?.includes('all')?'checked':''}> ${l}</label>`).join('')}</div></div>`).join('')}</div>`,async()=>{const assignments={};state.businesses.forEach(b=>{assignments[b.id]={enabled:document.querySelector(`.bizEnabled[data-biz="${b.id}"]`).checked,permissions:[...document.querySelectorAll(`.bizPerm[data-biz="${b.id}"]:checked`)].map(x=>x.dataset.perm)}});await api('/api/employees/'+id+'/access',{method:'PUT',body:JSON.stringify({assignments})});closeModal();await reloadCore()})}
+window.addEmployee=()=>modal('Add Employee','<div class="form-grid"><div class="field"><label>Name</label><input id="eName" class="input"></div><div class="field"><label>Login Email</label><input id="eEmail" class="input" type="email"></div><div class="field"><label>Role</label><input id="eRole" class="input" value="Merchant"></div><div class="field"><label>Temporary Password</label><input id="ePassword" class="input" type="password" placeholder="10+ characters"></div></div>',async()=>{if(!$('#eName').value.trim()||!$('#eEmail').value.trim()||!$('#ePassword').value)return;await api('/api/employees',{method:'POST',body:JSON.stringify({name:$('#eName').value.trim(),email:$('#eEmail').value.trim(),role:$('#eRole').value||'Merchant',password:$('#ePassword').value})});closeModal();await reloadCore()})
+window.editEmployee=id=>{const e=state.employees.find(x=>x.id===id);modal('Edit Employee',`<div class="form-grid" style="margin-bottom:14px"><div class="field"><label>Name</label><input id="editEmpName" class="input" value="${e.name||''}"></div><div class="field"><label>Login Email</label><input id="editEmpEmail" class="input" type="email" value="${e.email||''}"></div><div class="field"><label>Company Role</label><input id="editEmpRole" class="input" value="${e.role||'Employee'}"></div><div class="field"><label>Reset Password (optional)</label><input id="editEmpPassword" type="password" class="input" placeholder="Leave blank to keep current"></div></div><div class="grid g2">${state.businesses.map(b=>`<div class="assignment-block"><div class="assignment-head"><strong>${b.name}</strong><label><input class="bizEnabled" data-biz="${b.id}" type="checkbox" ${e.assignments?.[b.id]?.enabled?'checked':''}> Can Work Here</label></div><div class="permission-grid">${Object.entries(permissionLabels).map(([k,l])=>`<label class="perm"><input class="bizPerm" data-biz="${b.id}" data-perm="${k}" type="checkbox" ${e.assignments?.[b.id]?.permissions?.includes(k)||e.assignments?.[b.id]?.permissions?.includes('all')?'checked':''}> ${l}</label>`).join('')}</div></div>`).join('')}</div>`,async()=>{const assignments={};state.businesses.forEach(b=>{assignments[b.id]={enabled:document.querySelector(`.bizEnabled[data-biz="${b.id}"]`).checked,permissions:[...document.querySelectorAll(`.bizPerm[data-biz="${b.id}"]:checked`)].map(x=>x.dataset.perm)}});await api('/api/employees/'+id,{method:'PUT',body:JSON.stringify({name:$('#editEmpName').value.trim(),email:$('#editEmpEmail').value.trim(),role:$('#editEmpRole').value.trim()||'Employee'})});await api('/api/employees/'+id+'/access',{method:'PUT',body:JSON.stringify({assignments})});if($('#editEmpPassword').value)await api('/api/employees/'+id+'/password',{method:'PUT',body:JSON.stringify({password:$('#editEmpPassword').value,mustChange:true})});closeModal();await reloadCore()})}
 function coffers(){setHead('Coffers',activeBusiness().name);app.innerHTML=`<div class="grid g3">${stat('Current Balance',money(activeBusiness().coffers),'Business funds')}${stat('Company Cut',state.company.caravanCut+'%','Default sale cut','%')}${stat('Company Total',money(state.businesses.reduce((a,b)=>a+b.coffers,0)),'All businesses','¤')}</div>`}function history(){setHead('Sales History','Audit Ledger');app.innerHTML=`<div class="card">${table(['Date','Seller','Items','Sale','Company Cut','Participants'],state.history.filter(h=>String(h.businessId)===String(state.activeBusinessId)).map(h=>`<tr><td>${h.date}</td><td>${h.who}</td><td>${h.detail}</td><td>${money(h.amount)}</td><td>${money(h.companyCut)}</td><td>${h.participants?.map(p=>`${p.name} (${p.roles.join('/')})`).join(' · ')||'—'}</td></tr>`))}</div>`}function earnings(){setHead('Employee Earnings','Profit Distribution');app.innerHTML=`<div class="business-grid">${state.employees.map(e=>`<div class="business-card"><span class="eyebrow">${e.role}</span><h3>${e.name}</h3><div class="stat" style="min-height:0"><div class="value">${money(e.earnings)}</div><div class="sub">Recorded earnings</div></div></div>`).join('')}</div>`}function permissions(){setHead('Permissions','Business-Scoped Access');app.innerHTML='<div class="notice">Permissions are now stored per employee per business. Use Employees → Edit Access to decide where each employee can work and what they can do there.</div>'}function settings(){
   setHead("Settings","Company Configuration");
   app.innerHTML=`
@@ -129,4 +184,10 @@ function coffers(){setHead('Coffers',activeBusiness().name);app.innerHTML=`<div 
   </div>`;
 }window.saveCut=async()=>{const cut=Math.max(0,Math.min(100,Number($('#setCut').value)||0));await api('/api/company',{method:'PATCH',body:JSON.stringify({...state.company,caravanCut:cut})});await reloadCore()}
 function modal(title,body,onSave){$('#modalRoot').innerHTML=`<div class="modal-backdrop" onclick="if(event.target===this)closeModal()"><div class="modal"><h3>${title}</h3>${body}<div class="modal-actions"><button class="btn ghost" onclick="closeModal()">Cancel</button><button id="modalSave" class="btn">Save</button></div></div></div>`;$('#modalSave').onclick=onSave}window.closeModal=()=>$('#modalRoot').innerHTML='';
-initSharedData();
+(async()=>{
+  await refreshAuth();
+  if(authState.enforced&&!authState.user){
+    buildNav();buildBusinessSelect();applyBranding();renderAuthControls();showNativeLogin(true);return;
+  }
+  await initSharedData();
+})();

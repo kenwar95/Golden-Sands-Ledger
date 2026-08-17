@@ -13,6 +13,361 @@ async function firstCompany(env) {
   return env.DB.prepare("SELECT * FROM companies ORDER BY id LIMIT 1").first();
 }
 
+
+const AUTH_COOKIE = "gsl_session";
+const DAY = 86400;
+const PASSWORD_ITERATIONS = 210000;
+
+class HttpError extends Error {
+  constructor(status, message) {
+    super(message);
+    this.status = status;
+  }
+}
+function authEnforced(env) {
+  return String(env.AUTH_ENFORCE || "false").toLowerCase() === "true";
+}
+function setupEnabled(env) {
+  return String(env.AUTH_SETUP_ENABLED || "true").toLowerCase() === "true";
+}
+function b64urlEncode(bytes) {
+  let s="";
+  for(const b of bytes)s+=String.fromCharCode(b);
+  return btoa(s).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+}
+function b64urlDecode(input) {
+  input=input.replace(/-/g,"+").replace(/_/g,"/");
+  while(input.length%4)input+="=";
+  const bin=atob(input);
+  return Uint8Array.from(bin,c=>c.charCodeAt(0));
+}
+async function sha256(value) {
+  const data=new TextEncoder().encode(value);
+  return b64urlEncode(new Uint8Array(await crypto.subtle.digest("SHA-256",data)));
+}
+function randomToken(size=32) {
+  const a=new Uint8Array(size);
+  crypto.getRandomValues(a);
+  return b64urlEncode(a);
+}
+function cookieMap(request) {
+  const raw=request.headers.get("cookie")||"";
+  const out={};
+  for(const piece of raw.split(";")){
+    const i=piece.indexOf("=");
+    if(i>0)out[piece.slice(0,i).trim()]=decodeURIComponent(piece.slice(i+1).trim());
+  }
+  return out;
+}
+function setCookie(name,value,maxAge) {
+  return `${name}=${encodeURIComponent(value)}; Path=/; Max-Age=${maxAge}; Secure; HttpOnly; SameSite=Lax`;
+}
+function clearCookie(name) {
+  return `${name}=; Path=/; Max-Age=0; Secure; HttpOnly; SameSite=Lax`;
+}
+function constantTimeEqual(a,b) {
+  const aa=new TextEncoder().encode(String(a||""));
+  const bb=new TextEncoder().encode(String(b||""));
+  if(aa.length!==bb.length)return false;
+  let diff=0;
+  for(let i=0;i<aa.length;i++)diff|=aa[i]^bb[i];
+  return diff===0;
+}
+async function derivePassword(password,salt,iterations=PASSWORD_ITERATIONS) {
+  const key=await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(password),
+    {name:"PBKDF2"},
+    false,
+    ["deriveBits"]
+  );
+  const bits=await crypto.subtle.deriveBits(
+    {name:"PBKDF2",hash:"SHA-256",salt:b64urlDecode(salt),iterations:Number(iterations)},
+    key,
+    256
+  );
+  return b64urlEncode(new Uint8Array(bits));
+}
+function validatePassword(password) {
+  if(typeof password!=="string" || password.length<10)
+    throw new HttpError(400,"Password must be at least 10 characters.");
+  if(password.length>128)
+    throw new HttpError(400,"Password is too long.");
+}
+async function createPasswordRecord(env,employeeId,password,mustChange=false) {
+  validatePassword(password);
+  const salt=randomToken(18);
+  const hash=await derivePassword(password,salt,PASSWORD_ITERATIONS);
+  const now=Math.floor(Date.now()/1000);
+  await env.DB.prepare(`
+    INSERT INTO employee_credentials(
+      employee_id,password_salt,password_hash,password_iterations,
+      must_change_password,password_updated_at
+    ) VALUES(?,?,?,?,?,?)
+    ON CONFLICT(employee_id) DO UPDATE SET
+      password_salt=excluded.password_salt,
+      password_hash=excluded.password_hash,
+      password_iterations=excluded.password_iterations,
+      must_change_password=excluded.must_change_password,
+      password_updated_at=excluded.password_updated_at
+  `).bind(employeeId,salt,hash,PASSWORD_ITERATIONS,mustChange?1:0,now).run();
+  await env.DB.prepare("DELETE FROM auth_sessions WHERE employee_id=?").bind(employeeId).run();
+}
+async function sessionUser(request,env) {
+  const raw=cookieMap(request)[AUTH_COOKIE];
+  if(!raw)return null;
+  const hash=await sha256(raw),now=Math.floor(Date.now()/1000);
+  const row=await env.DB.prepare(`
+    SELECT s.session_hash,s.expires_at,
+           e.id,e.company_id,e.display_name,e.email,e.company_role,
+           e.status,e.is_company_owner,
+           COALESCE(c.must_change_password,0) AS must_change_password
+    FROM auth_sessions s
+    JOIN employees e ON e.id=s.employee_id
+    LEFT JOIN employee_credentials c ON c.employee_id=e.id
+    WHERE s.session_hash=? AND s.expires_at>? AND e.status='Active'
+  `).bind(hash,now).first();
+  if(!row)return null;
+  await env.DB.prepare("UPDATE auth_sessions SET last_seen_at=? WHERE session_hash=?")
+    .bind(now,hash).run();
+  return {
+    id:row.id,
+    companyId:row.company_id,
+    name:row.display_name,
+    email:row.email||"",
+    role:row.company_role,
+    isOwner:!!row.is_company_owner,
+    mustChangePassword:!!row.must_change_password
+  };
+}
+async function createSession(request,env,employee) {
+  const raw=randomToken(32),hash=await sha256(raw),now=Math.floor(Date.now()/1000);
+  await env.DB.prepare(`
+    INSERT INTO auth_sessions(session_hash,employee_id,created_at,expires_at,last_seen_at,user_agent)
+    VALUES(?,?,?,?,?,?)
+  `).bind(hash,employee.id,now,now+7*DAY,now,request.headers.get("user-agent")||"").run();
+  return {raw,expires:7*DAY};
+}
+async function loginNative(request,env) {
+  const body=await readJson(request);
+  const email=String(body.email||"").trim().toLowerCase();
+  const password=String(body.password||"");
+  if(!email||!password)throw new HttpError(400,"Email and password are required.");
+
+  const row=await env.DB.prepare(`
+    SELECT e.*,c.password_salt,c.password_hash,c.password_iterations,c.must_change_password
+    FROM employees e
+    JOIN employee_credentials c ON c.employee_id=e.id
+    WHERE lower(e.email)=? AND e.status='Active'
+    LIMIT 1
+  `).bind(email).first();
+
+  // Perform a dummy PBKDF2 even on a missing account to reduce timing differences.
+  if(!row){
+    const dummySalt="AAAAAAAAAAAAAAAAAAAAAAAA";
+    await derivePassword(password,dummySalt,10000);
+    throw new HttpError(401,"Invalid email or password.");
+  }
+
+  const candidate=await derivePassword(password,row.password_salt,row.password_iterations);
+  if(!constantTimeEqual(candidate,row.password_hash))
+    throw new HttpError(401,"Invalid email or password.");
+
+  const sess=await createSession(request,env,row);
+  return new Response(JSON.stringify({
+    ok:true,
+    user:{
+      id:row.id,name:row.display_name,email:row.email||"",
+      role:row.company_role,isOwner:!!row.is_company_owner,
+      mustChangePassword:!!row.must_change_password
+    }
+  }),{
+    headers:{
+      "content-type":"application/json; charset=utf-8",
+      "set-cookie":setCookie(AUTH_COOKIE,sess.raw,sess.expires)
+    }
+  });
+}
+async function logoutNative(request,env) {
+  const raw=cookieMap(request)[AUTH_COOKIE];
+  if(raw){
+    await env.DB.prepare("DELETE FROM auth_sessions WHERE session_hash=?")
+      .bind(await sha256(raw)).run();
+  }
+  return new Response(JSON.stringify({ok:true}),{
+    headers:{
+      "content-type":"application/json; charset=utf-8",
+      "set-cookie":clearCookie(AUTH_COOKIE)
+    }
+  });
+}
+async function authMe(request,env) {
+  const user=await sessionUser(request,env);
+  const ownersWithoutPassword=await env.DB.prepare(`
+    SELECT COUNT(*) AS n
+    FROM employees e
+    LEFT JOIN employee_credentials c ON c.employee_id=e.id
+    WHERE e.is_company_owner=1 AND e.status='Active' AND c.employee_id IS NULL
+  `).first();
+  return json({
+    enforced:authEnforced(env),
+    setupEnabled:setupEnabled(env),
+    needsOwnerSetup:Number(ownersWithoutPassword?.n||0)>0,
+    user
+  });
+}
+async function setupOwner(request,env) {
+  if(!setupEnabled(env))throw new HttpError(403,"Owner setup is disabled.");
+  const body=await readJson(request);
+  const setupToken=String(request.headers.get("x-setup-token")||body.setupToken||"");
+  const expected=String(env.AUTH_SETUP_TOKEN||"");
+  if(!expected || !constantTimeEqual(setupToken,expected))
+    throw new HttpError(403,"Invalid setup token.");
+
+  const owner=await env.DB.prepare(`
+    SELECT e.*
+    FROM employees e
+    LEFT JOIN employee_credentials c ON c.employee_id=e.id
+    WHERE e.is_company_owner=1 AND e.status='Active' AND c.employee_id IS NULL
+    ORDER BY e.id LIMIT 1
+  `).first();
+  if(!owner)throw new HttpError(409,"Owner account has already been configured.");
+
+  const email=String(body.email||"").trim().toLowerCase();
+  if(!email || !email.includes("@"))throw new HttpError(400,"Enter a valid owner email.");
+  validatePassword(String(body.password||""));
+
+  const conflict=await env.DB.prepare(
+    "SELECT id FROM employees WHERE lower(email)=? AND id<>?"
+  ).bind(email,owner.id).first();
+  if(conflict)throw new HttpError(409,"That email is already assigned to another employee.");
+
+  await env.DB.prepare(
+    "UPDATE employees SET email=?,updated_at=CURRENT_TIMESTAMP WHERE id=?"
+  ).bind(email,owner.id).run();
+  await createPasswordRecord(env,owner.id,String(body.password),false);
+
+  return json({ok:true,owner:{id:owner.id,name:owner.display_name,email}});
+}
+async function changeOwnPassword(request,env,user) {
+  if(!user)throw new HttpError(401,"Sign in required.");
+  const body=await readJson(request);
+  const current=String(body.currentPassword||""),next=String(body.newPassword||"");
+  validatePassword(next);
+  const cred=await env.DB.prepare(
+    "SELECT * FROM employee_credentials WHERE employee_id=?"
+  ).bind(user.id).first();
+  if(!cred)throw new HttpError(400,"Password is not configured.");
+  const candidate=await derivePassword(current,cred.password_salt,cred.password_iterations);
+  if(!constantTimeEqual(candidate,cred.password_hash))
+    throw new HttpError(401,"Current password is incorrect.");
+  await createPasswordRecord(env,user.id,next,false);
+  return json({ok:true});
+}
+async function adminSetPassword(env,employeeId,password,mustChange=true) {
+  await createPasswordRecord(env,Number(employeeId),password,mustChange);
+}
+async function requireUser(request,env) {
+  const user=await sessionUser(request,env);
+  if(!user && authEnforced(env))throw new HttpError(401,"Sign in required.");
+  return user;
+}
+async function hasBusinessPermission(env,user,businessId,permission) {
+  if(!user)return !authEnforced(env);
+  if(user.isOwner)return true;
+  const row=await env.DB.prepare(`
+    SELECT 1 ok
+    FROM employee_business_access a
+    JOIN employee_business_permissions p
+      ON p.employee_id=a.employee_id AND p.business_id=a.business_id
+    WHERE a.employee_id=? AND a.business_id=? AND a.enabled=1
+      AND p.permission_code=? AND p.granted=1
+    LIMIT 1
+  `).bind(user.id,Number(businessId),permission).first();
+  return !!row;
+}
+async function hasCompanyPermission(env,user,permission) {
+  if(!user)return !authEnforced(env);
+  if(user.isOwner)return true;
+  const row=await env.DB.prepare(`
+    SELECT 1 ok
+    FROM employee_business_access a
+    JOIN employee_business_permissions p
+      ON p.employee_id=a.employee_id AND p.business_id=a.business_id
+    WHERE a.employee_id=? AND a.enabled=1
+      AND p.permission_code=? AND p.granted=1
+    LIMIT 1
+  `).bind(user.id,permission).first();
+  return !!row;
+}
+async function requireBusinessPermission(env,user,businessId,permission) {
+  if(!(await hasBusinessPermission(env,user,businessId,permission)))
+    throw new HttpError(403,`Permission denied: ${permission}`);
+}
+async function requireCompanyPermission(env,user,permission) {
+  if(!(await hasCompanyPermission(env,user,permission)))
+    throw new HttpError(403,`Permission denied: ${permission}`);
+}
+async function authContext(env,user) {
+  if(!user)return {user:null,allowedBusinessIds:null,permissions:{}};
+  if(user.isOwner){
+    const {results:bs}=await env.DB.prepare(
+      "SELECT id FROM businesses WHERE company_id=?"
+    ).bind(user.companyId).all();
+    return {user,allowedBusinessIds:bs.map(x=>x.id),permissions:{owner:true}};
+  }
+  const {results:rows}=await env.DB.prepare(`
+    SELECT a.business_id,a.enabled,p.permission_code,p.granted
+    FROM employee_business_access a
+    LEFT JOIN employee_business_permissions p
+      ON p.employee_id=a.employee_id AND p.business_id=a.business_id
+    WHERE a.employee_id=?
+  `).bind(user.id).all();
+  const permissions={},allowed=new Set();
+  for(const r of rows){
+    if(r.enabled)allowed.add(r.business_id);
+    if(r.enabled&&r.granted&&r.permission_code){
+      if(!permissions[r.business_id])permissions[r.business_id]=[];
+      permissions[r.business_id].push(r.permission_code);
+    }
+  }
+  return {user,allowedBusinessIds:[...allowed],permissions};
+}
+function filterCoreForAuth(core,ctx) {
+  if(!core?.initialized||!ctx.user||ctx.user.isOwner){
+    if(core?.initialized)core.auth=ctx;
+    return core;
+  }
+  const allowed=new Set((ctx.allowedBusinessIds||[]).map(String)),s=core.state;
+  s.businesses=(s.businesses||[]).filter(b=>allowed.has(String(b.id)));
+  s.inventory=(s.inventory||[]).filter(i=>allowed.has(String(i.businessId)));
+  s.notes=(s.notes||[]).filter(n=>allowed.has(String(n.businessId)));
+  s.transfers=(s.transfers||[]).filter(t=>allowed.has(String(t.businessId)));
+  s.history=(s.history||[]).filter(h=>allowed.has(String(h.businessId)));
+  s.employees=(s.employees||[]).map(e=>({
+    id:e.id,name:e.name,role:e.role,
+    email:e.id===ctx.user.id?e.email:"",
+    earnings:e.id===ctx.user.id?e.earnings:0,
+    assignments:e.assignments
+  }));
+  core.auth=ctx;
+  return core;
+}
+async function getAuthorizedCore(env,user) {
+  return filterCoreForAuth(await getCore(env),await authContext(env,user));
+}
+async function updateEmployeeProfile(env,id,body) {
+  await env.DB.prepare(`
+    UPDATE employees SET display_name=?,email=?,company_role=?,updated_at=CURRENT_TIMESTAMP
+    WHERE id=?
+  `).bind(
+    String(body.name||"").trim(),
+    String(body.email||"").trim()||null,
+    String(body.role||"Employee").trim(),
+    Number(id)
+  ).run();
+}
+
 async function getCore(env) {
   const company = await firstCompany(env);
   if (!company) return { initialized: false };
@@ -607,59 +962,148 @@ async function createSale(env,body){
 }
 
 export default {
-  async fetch(request, env) {
-    const url = new URL(request.url);
-    try {
-      if (url.pathname === "/api/health") {
-        const result = await env.DB.prepare("SELECT 1 AS ok").first();
-        return json({ worker: true, database: result?.ok === 1 });
+  async fetch(request,env) {
+    const url=new URL(request.url);
+    try{
+      if(url.pathname==="/api/health"){
+        const result=await env.DB.prepare("SELECT 1 AS ok").first();
+        return json({
+          worker:true,database:result?.ok===1,
+          authMode:"native",
+          authEnforced:authEnforced(env)
+        });
       }
 
-      if (url.pathname === "/api/core" && request.method === "GET")
-        return json(await getCore(env));
+      if(url.pathname==="/api/auth/me"&&request.method==="GET")
+        return authMe(request,env);
+      if(url.pathname==="/api/auth/login"&&request.method==="POST")
+        return loginNative(request,env);
+      if(url.pathname==="/api/auth/logout"&&request.method==="POST")
+        return logoutNative(request,env);
+      if(url.pathname==="/api/auth/setup-owner"&&request.method==="POST")
+        return setupOwner(request,env);
 
-      if (url.pathname === "/api/bootstrap" && request.method === "POST") {
-        const body = await readJson(request);
-        const result = await bootstrap(env, body.state || {});
-        return json(result, { status: result.ok ? 200 : 409 });
+      const user=await requireUser(request,env);
+
+      if(url.pathname==="/api/auth/change-password"&&request.method==="POST")
+        return changeOwnPassword(request,env,user);
+
+      if(url.pathname==="/api/core"&&request.method==="GET")
+        return json(await getAuthorizedCore(env,user));
+
+      if(url.pathname==="/api/bootstrap"&&request.method==="POST"){
+        if(authEnforced(env))throw new HttpError(403,"Bootstrap is disabled.");
+        const body=await readJson(request);
+        const result=await bootstrap(env,body.state||{});
+        return json(result,{status:result.ok?200:409});
       }
 
-      if (url.pathname === "/api/company" && request.method === "PATCH")
-        return json(await updateCompany(env, await readJson(request)));
+      if(url.pathname==="/api/company"&&request.method==="PATCH"){
+        await requireCompanyPermission(env,user,"settings");
+        await updateCompany(env,await readJson(request));
+        return json(await getAuthorizedCore(env,user));
+      }
 
-      if (url.pathname === "/api/businesses" && request.method === "POST")
-        return json(await createBusiness(env, await readJson(request)));
+      if(url.pathname==="/api/businesses"&&request.method==="POST"){
+        await requireCompanyPermission(env,user,"businesses");
+        await createBusiness(env,await readJson(request));
+        return json(await getAuthorizedCore(env,user));
+      }
 
-      let match = url.pathname.match(/^\/api\/businesses\/(\d+)$/);
-      if (match && request.method === "PUT")
-        return json(await updateBusiness(env, Number(match[1]), await readJson(request)));
+      let match=url.pathname.match(/^\/api\/businesses\/(\d+)$/);
+      if(match&&request.method==="PUT"){
+        await requireCompanyPermission(env,user,"businesses");
+        await updateBusiness(env,Number(match[1]),await readJson(request));
+        return json(await getAuthorizedCore(env,user));
+      }
 
-      if (url.pathname === "/api/employees" && request.method === "POST")
-        return json(await createEmployee(env, await readJson(request)));
+      if(url.pathname==="/api/employees"&&request.method==="POST"){
+        await requireCompanyPermission(env,user,"employees");
+        const body=await readJson(request);
+        await createEmployee(env,body);
+        const newest=await env.DB.prepare(
+          "SELECT id FROM employees WHERE lower(email)=lower(?) ORDER BY id DESC LIMIT 1"
+        ).bind(body.email||"").first();
+        if(newest&&body.password)await adminSetPassword(env,newest.id,String(body.password),true);
+        return json(await getAuthorizedCore(env,user));
+      }
 
-      match = url.pathname.match(/^\/api\/employees\/(\d+)\/access$/);
-      if (match && request.method === "PUT")
-        return json(await updateEmployeeAccess(env, Number(match[1]), await readJson(request)));
+      match=url.pathname.match(/^\/api\/employees\/(\d+)$/);
+      if(match&&request.method==="PUT"){
+        await requireCompanyPermission(env,user,"employees");
+        await updateEmployeeProfile(env,Number(match[1]),await readJson(request));
+        return json(await getAuthorizedCore(env,user));
+      }
 
-      if (url.pathname === "/api/inventory" && request.method === "POST")
-        return json(await createInventoryEntry(env, await readJson(request)));
+      match=url.pathname.match(/^\/api\/employees\/(\d+)\/password$/);
+      if(match&&request.method==="PUT"){
+        await requireCompanyPermission(env,user,"employees");
+        const body=await readJson(request);
+        await adminSetPassword(env,Number(match[1]),String(body.password||""),body.mustChange!==false);
+        return json({ok:true});
+      }
 
-      if (url.pathname === "/api/stock-intake" && request.method === "POST")
-        return json(await stockIntake(env, await readJson(request)));
+      match=url.pathname.match(/^\/api\/employees\/(\d+)\/access$/);
+      if(match&&request.method==="PUT"){
+        await requireCompanyPermission(env,user,"permissions");
+        await updateEmployeeAccess(env,Number(match[1]),await readJson(request));
+        return json(await getAuthorizedCore(env,user));
+      }
 
-      if (url.pathname === "/api/notebook" && request.method === "POST")
-        return json(await createNotebookEntry(env, await readJson(request)));
-      if (url.pathname === "/api/transfers" && request.method === "POST")
-        return json(await createTransfer(env, await readJson(request)));
-      if (url.pathname === "/api/sales" && request.method === "POST")
-        return json(await createSale(env, await readJson(request)));
+      if(url.pathname==="/api/inventory"&&request.method==="POST"){
+        const body=await readJson(request);
+        await requireBusinessPermission(env,user,body.businessId,"inventory_edit");
+        await createInventoryEntry(env,body);
+        return json(await getAuthorizedCore(env,user));
+      }
 
-      if (url.pathname.startsWith("/api/"))
-        return json({ error: "Not found" }, { status: 404 });
+      if(url.pathname==="/api/stock-intake"&&request.method==="POST"){
+        const body=await readJson(request);
+        const ie=await env.DB.prepare("SELECT business_id FROM inventory_entries WHERE id=?")
+          .bind(Number(body.inventoryEntryId)).first();
+        if(!ie)throw new HttpError(404,"Inventory entry not found.");
+        await requireBusinessPermission(env,user,ie.business_id,"inventory_edit");
+        if(user)body.employeeId=user.id;
+        await stockIntake(env,body);
+        return json(await getAuthorizedCore(env,user));
+      }
+
+      if(url.pathname==="/api/notebook"&&request.method==="POST"){
+        const body=await readJson(request);
+        await requireBusinessPermission(env,user,body.businessId,"notebook");
+        if(user)body.employeeId=user.id;
+        await createNotebookEntry(env,body);
+        return json(await getAuthorizedCore(env,user));
+      }
+
+      if(url.pathname==="/api/transfers"&&request.method==="POST"){
+        const body=await readJson(request);
+        const ie=await env.DB.prepare("SELECT business_id FROM inventory_entries WHERE id=?")
+          .bind(Number(body.inventoryEntryId)).first();
+        if(!ie)throw new HttpError(404,"Inventory entry not found.");
+        await requireBusinessPermission(env,user,ie.business_id,"transfers");
+        if(user)body.employeeId=user.id;
+        await createTransfer(env,body);
+        return json(await getAuthorizedCore(env,user));
+      }
+
+      if(url.pathname==="/api/sales"&&request.method==="POST"){
+        const body=await readJson(request);
+        await requireBusinessPermission(env,user,body.businessId,"register");
+        if(user)body.sellerId=user.id;
+        await createSale(env,body);
+        return json(await getAuthorizedCore(env,user));
+      }
+
+      if(url.pathname.startsWith("/api/"))
+        return json({error:"Not found"},{status:404});
 
       return env.ASSETS.fetch(request);
-    } catch (error) {
-      return json({ error: error?.message || String(error) }, { status: 500 });
+    }catch(error){
+      return json(
+        {error:error?.message||String(error)},
+        {status:error?.status||500}
+      );
     }
   }
 };

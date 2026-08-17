@@ -17,5 +17,9 @@
       "database_id": "fcb10916-a09c-477a-b5e3-03e904116718",
       "migrations_dir": "migrations"
     }
-  ]
+  ],
+  "vars": {
+    "AUTH_ENFORCE": "false",
+    "AUTH_SETUP_ENABLED": "true"
+  }
 }
