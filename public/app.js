@@ -689,7 +689,10 @@ function coffers(){setHead('Coffers',activeBusiness().name);app.innerHTML=`<div 
 function modal(title,body,onSave){$('#modalRoot').innerHTML=`<div class="modal-backdrop" onclick="if(event.target===this)closeModal()"><div class="modal"><h3>${title}</h3>${body}<div class="modal-actions"><button class="btn ghost" onclick="closeModal()">Cancel</button><button id="modalSave" class="btn">Save</button></div></div></div>`;$('#modalSave').onclick=onSave}window.closeModal=()=>$('#modalRoot').innerHTML='';
 (async()=>{
   await refreshAuth();
-  if(authState.enforced&&!authState.user){
+  // Never render company records until a user has authenticated.
+  // The server's `enforced` flag can be false/absent during startup, so
+  // gating only on that flag allowed the ledger shell to appear signed out.
+  if(!authState.user){
     showLockedLedger();
     return;
   }
