@@ -166,12 +166,12 @@ async function loginNative(request,env) {
   if(!row){
     const dummySalt="AAAAAAAAAAAAAAAAAAAAAAAA";
     await derivePassword(password,dummySalt,10000);
-    return json({error:"Invalid email or password."},{status:401});
+    throw new HttpError(401,"Invalid email or password.");
   }
 
   const candidate=await derivePassword(password,row.password_salt,row.password_iterations);
   if(!constantTimeEqual(candidate,row.password_hash))
-    return json({error:"Invalid email or password."},{status:401});
+    throw new HttpError(401,"Invalid email or password.");
 
   const sess=await createSession(request,env,row);
   return new Response(JSON.stringify({
@@ -865,11 +865,6 @@ async function createEmployee(env, body) {
     VALUES (?, ?, ?, ?, 0)
   `).bind(c.id, body.name, body.email || null, body.role || "Employee").run();
   const employeeId = r.meta.last_row_id;
-
-  if(body.password){
-    await createPasswordRecord(env, employeeId, String(body.password), true);
-  }
-
   const { results: businesses } = await env.DB.prepare(
     "SELECT id FROM businesses WHERE company_id = ?"
   ).bind(c.id).all();
@@ -900,7 +895,7 @@ async function updateEmployeeAccess(env, id, body) {
 
     for (const p of a.permissions || []) {
       await env.DB.prepare(`
-        INSERT INTO employee_business_permissions
+        INSERT OR REPLACE INTO employee_business_permissions
           (employee_id, business_id, permission_code, granted)
         VALUES (?, ?, ?, 1)
       `).bind(id, Number(businessId), p).run();
