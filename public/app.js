@@ -661,7 +661,95 @@ window.newTransfer=()=>modal('Transfer Stock',`<div class="form-grid"><div class
 function notebook(){setHead('Caravan Notebook','In-Character Notices');$('#pageActions').innerHTML='<button class="btn" onclick="newNote()">+ Write Note</button>';app.innerHTML=`<div class="grid g2">${state.notes.filter(n=>String(n.businessId)===String(state.activeBusinessId)).map(n=>`<div class="scroll-card"><span class="eyebrow">${n.date}</span><h3>${n.author}</h3><p>${n.text}</p></div>`).join('')||'<div class="empty">No notes.</div>'}</div>`}window.newNote=()=>modal('Write Note','<div class="field"><label>Notice</label><textarea id="nText" class="textarea"></textarea></div>',async()=>{const text=$('#nText').value.trim();if(!text)return;const author=eligibleEmployees()[0]||state.employees[0];await api('/api/notebook',{method:'POST',body:JSON.stringify({businessId:state.activeBusinessId,employeeId:author?.id||null,text,pinned:false})});closeModal();await reloadCore()})
 function employees(){setHead('Employees','Company Staff');$('#pageActions').innerHTML='<button class="btn" onclick="addEmployee()">+ Employee</button>';app.innerHTML=`<div class="business-grid">${state.employees.map(e=>`<div class="business-card"><span class="eyebrow">${e.role}</span><h3>${e.name}</h3><p>${e.email}</p>${state.businesses.map(b=>`<div class="supplier-row"><span>${b.name}</span><strong>${e.assignments?.[b.id]?.enabled?'Allowed':'No Access'}</strong></div>`).join('')}<div class="quick" style="margin-top:10px"><button class="btn ghost" onclick="editEmployee(${e.id})">Edit Access</button></div></div>`).join('')}</div>`}
 window.addEmployee=()=>modal('Add Employee','<div class="form-grid"><div class="field"><label>Name</label><input id="eName" class="input"></div><div class="field"><label>Login Email</label><input id="eEmail" class="input" type="email"></div><div class="field"><label>Role</label><input id="eRole" class="input" value="Merchant"></div><div class="field"><label>Temporary Password</label><input id="ePassword" class="input" type="password" placeholder="10+ characters"></div></div>',async()=>{if(!$('#eName').value.trim()||!$('#eEmail').value.trim()||!$('#ePassword').value)return;await api('/api/employees',{method:'POST',body:JSON.stringify({name:$('#eName').value.trim(),email:$('#eEmail').value.trim(),role:$('#eRole').value||'Merchant',password:$('#ePassword').value})});closeModal();await reloadCore()})
-window.editEmployee=id=>{const e=state.employees.find(x=>x.id===id);modal('Edit Employee',`<div class="form-grid" style="margin-bottom:14px"><div class="field"><label>Name</label><input id="editEmpName" class="input" value="${e.name||''}"></div><div class="field"><label>Login Email</label><input id="editEmpEmail" class="input" type="email" value="${e.email||''}"></div><div class="field"><label>Company Role</label><input id="editEmpRole" class="input" value="${e.role||'Employee'}"></div><div class="field"><label>Reset Password (optional)</label><input id="editEmpPassword" type="password" class="input" placeholder="Leave blank to keep current"></div></div><div class="grid g2">${state.businesses.map(b=>`<div class="assignment-block"><div class="assignment-head"><strong>${b.name}</strong><label><input class="bizEnabled" data-biz="${b.id}" type="checkbox" ${e.assignments?.[b.id]?.enabled?'checked':''}> Can Work Here</label></div><div class="permission-grid">${Object.entries(permissionLabels).map(([k,l])=>`<label class="perm"><input class="bizPerm" data-biz="${b.id}" data-perm="${k}" type="checkbox" ${e.assignments?.[b.id]?.permissions?.includes(k)||e.assignments?.[b.id]?.permissions?.includes('all')?'checked':''}> ${l}</label>`).join('')}</div></div>`).join('')}</div>`,async()=>{const assignments={};state.businesses.forEach(b=>{assignments[b.id]={enabled:document.querySelector(`.bizEnabled[data-biz="${b.id}"]`).checked,permissions:[...document.querySelectorAll(`.bizPerm[data-biz="${b.id}"]:checked`)].map(x=>x.dataset.perm)}});await api('/api/employees/'+id,{method:'PUT',body:JSON.stringify({name:$('#editEmpName').value.trim(),email:$('#editEmpEmail').value.trim(),role:$('#editEmpRole').value.trim()||'Employee'})});await api('/api/employees/'+id+'/access',{method:'PUT',body:JSON.stringify({assignments})});if($('#editEmpPassword').value)await api('/api/employees/'+id+'/password',{method:'PUT',body:JSON.stringify({password:$('#editEmpPassword').value,mustChange:true})});closeModal();await reloadCore()})}
+window.editEmployee=id=>{
+  const e=state.employees.find(x=>x.id===id);
+  modal('Edit Employee',`
+    <div class="form-grid" style="margin-bottom:14px">
+      <div class="field"><label>Name</label><input id="editEmpName" class="input" value="${e.name||''}"></div>
+      <div class="field"><label>Login Email</label><input id="editEmpEmail" class="input" type="email" value="${e.email||''}"></div>
+      <div class="field"><label>Company Role</label><input id="editEmpRole" class="input" value="${e.role||'Employee'}"></div>
+      <div class="field">
+        <label>Reset / Create Login Password (optional)</label>
+        <input id="editEmpPassword" type="password" class="input" placeholder="Minimum 10 characters">
+        <small style="display:block;margin-top:5px;opacity:.7">Leave blank to keep the current password.</small>
+      </div>
+    </div>
+    <div class="grid g2">
+      ${state.businesses.map(b=>`
+        <div class="assignment-block">
+          <div class="assignment-head">
+            <strong>${b.name}</strong>
+            <label><input class="bizEnabled" data-biz="${b.id}" type="checkbox" ${e.assignments?.[b.id]?.enabled?'checked':''}> Can Work Here</label>
+          </div>
+          <div class="permission-grid">
+            ${Object.entries(permissionLabels).map(([k,l])=>`
+              <label class="perm">
+                <input class="bizPerm" data-biz="${b.id}" data-perm="${k}" type="checkbox"
+                ${e.assignments?.[b.id]?.permissions?.includes(k)||e.assignments?.[b.id]?.permissions?.includes('all')?'checked':''}>
+                ${l}
+              </label>`).join('')}
+          </div>
+        </div>`).join('')}
+    </div>
+  `,async()=>{
+    const newPassword=$('#editEmpPassword').value;
+
+    if(newPassword && newPassword.length<10){
+      alert('Password was NOT saved. Temporary passwords must be at least 10 characters.');
+      return;
+    }
+
+    const email=$('#editEmpEmail').value.trim();
+    if(!email || !email.includes('@')){
+      alert('Enter a valid login email before saving.');
+      return;
+    }
+
+    const assignments={};
+    state.businesses.forEach(b=>{
+      assignments[b.id]={
+        enabled:document.querySelector(`.bizEnabled[data-biz="${b.id}"]`).checked,
+        permissions:[...document.querySelectorAll(`.bizPerm[data-biz="${b.id}"]:checked`)].map(x=>x.dataset.perm)
+      };
+    });
+
+    try{
+      await api('/api/employees/'+id,{
+        method:'PUT',
+        body:JSON.stringify({
+          name:$('#editEmpName').value.trim(),
+          email,
+          role:$('#editEmpRole').value.trim()||'Employee'
+        })
+      });
+
+      await api('/api/employees/'+id+'/access',{
+        method:'PUT',
+        body:JSON.stringify({assignments})
+      });
+
+      if(newPassword){
+        const pwResult=await api('/api/employees/'+id+'/password',{
+          method:'PUT',
+          body:JSON.stringify({password:newPassword,mustChange:true})
+        });
+        if(!pwResult?.ok)throw new Error('Password endpoint did not confirm the update.');
+      }
+
+      closeModal();
+      await reloadCore();
+
+      if(newPassword){
+        alert(`Employee saved successfully.\nLogin password was created/reset for ${e.name}.\nThey can now sign in with ${email}.`);
+      }else{
+        alert('Employee settings saved successfully.');
+      }
+    }catch(err){
+      console.error('Employee update failed:',err);
+      alert('Employee/password could not be saved: '+err.message);
+    }
+  });
+}
 function coffers(){setHead('Coffers',activeBusiness().name);app.innerHTML=`<div class="grid g3">${stat('Current Balance',money(activeBusiness().coffers),'Business funds')}${stat('Company Cut',state.company.caravanCut+'%','Default sale cut','%')}${stat('Company Total',money(state.businesses.reduce((a,b)=>a+b.coffers,0)),'All businesses','¤')}</div>`}function history(){setHead('Sales History','Audit Ledger');app.innerHTML=`<div class="card">${table(['Date','Seller','Items','Sale','Company Cut','Participants'],state.history.filter(h=>String(h.businessId)===String(state.activeBusinessId)).map(h=>`<tr><td>${h.date}</td><td>${h.who}</td><td>${h.detail}</td><td>${money(h.amount)}</td><td>${money(h.companyCut)}</td><td>${h.participants?.map(p=>`${p.name} (${p.roles.join('/')})`).join(' · ')||'—'}</td></tr>`))}</div>`}function earnings(){setHead('Employee Earnings','Profit Distribution');app.innerHTML=`<div class="business-grid">${state.employees.map(e=>`<div class="business-card"><span class="eyebrow">${e.role}</span><h3>${e.name}</h3><div class="stat" style="min-height:0"><div class="value">${money(e.earnings)}</div><div class="sub">Recorded earnings</div></div></div>`).join('')}</div>`}function permissions(){setHead('Permissions','Business-Scoped Access');app.innerHTML='<div class="notice">Permissions are now stored per employee per business. Use Employees → Edit Access to decide where each employee can work and what they can do there.</div>'}function settings(){
   setHead("Settings","Company Configuration");
   app.innerHTML=`
@@ -689,10 +777,7 @@ function coffers(){setHead('Coffers',activeBusiness().name);app.innerHTML=`<div 
 function modal(title,body,onSave){$('#modalRoot').innerHTML=`<div class="modal-backdrop" onclick="if(event.target===this)closeModal()"><div class="modal"><h3>${title}</h3>${body}<div class="modal-actions"><button class="btn ghost" onclick="closeModal()">Cancel</button><button id="modalSave" class="btn">Save</button></div></div></div>`;$('#modalSave').onclick=onSave}window.closeModal=()=>$('#modalRoot').innerHTML='';
 (async()=>{
   await refreshAuth();
-  // Never render company records until a user has authenticated.
-  // The server's `enforced` flag can be false/absent during startup, so
-  // gating only on that flag allowed the ledger shell to appear signed out.
-  if(!authState.user){
+  if(authState.enforced&&!authState.user){
     showLockedLedger();
     return;
   }
